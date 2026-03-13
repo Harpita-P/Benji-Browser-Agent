@@ -216,9 +216,9 @@ export default function Home() {
 
         setTimeout(() => {
           setActiveBugs(prev => prev.filter(b => b.id !== id));
-        }, 4800);
+        }, 4200);
       }
-    }, 1300);
+    }, 1400);
 
     return () => clearInterval(interval);
   }, []);
@@ -514,7 +514,7 @@ export default function Home() {
               <div className="w-8 h-8 bg-[#FF0000] rounded-full flex items-center justify-center text-white font-bold text-sm">
                 B
               </div>
-              <span className="text-lg font-semibold tracking-[0.14em] uppercase" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
+              <span className="text-lg font-semibold tracking-[0.02em]" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
                 Benji
               </span>
             </div>
@@ -569,7 +569,7 @@ export default function Home() {
                 />
               </div>
               <h1 className="text-7xl font-normal mb-6 tracking-tight" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
-                Benji is your AI{" "}
+                <span className="text-gray-800">Benji</span> is your AI{" "}
                 <span className={`inline-block transition-opacity duration-300 ${titleVisible ? "opacity-100" : "opacity-0"}`}>
                   {rotatingTitles[titleIndex]}
                 </span>
@@ -582,9 +582,11 @@ export default function Home() {
                   GitHub ADK MCP
                 </span>
               </div>
-              <div className="text-gray-900 text-lg max-w-4xl mx-auto font-light leading-relaxed text-justify bg-gray-100/80 border border-gray-200/80 backdrop-blur-sm rounded-2xl px-6 py-5 md:px-8 md:py-7 shadow-md">
+              <div className="text-gray-900 text-lg max-w-4xl mx-auto font-light leading-relaxed text-justify bg-gray-100/90 border border-gray-200/90 backdrop-blur-sm rounded-2xl px-6 py-5 md:px-8 md:py-7 shadow-sm">
                 <p className="text-center text-xl md:text-2xl font-normal text-[#FF0000]" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
-                  Build and ship with more confidence with an AI teammate who can navigate your UI in real time
+                  Build and ship with more confidence with an AI teammate
+                  <br />
+                  who can navigate your UI in real time
                 </p>
                 <p className="mt-4 flex items-start gap-3">
                   <span className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-red-100">
@@ -605,96 +607,101 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Benji Browser Input Box - Full Width */}
-            <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8 max-w-5xl w-full mb-40">
-              <div className="space-y-4">
-                {/* URL Input */}
-                <div>
-                  <label htmlFor="app-url" className="block text-sm font-medium text-gray-700 mb-2" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
-                    Go to:
-                  </label>
-                  <input
-                    id="app-url"
-                    title="App URL"
-                    type="url"
-                    value={appUrl}
-                    onChange={(e) => setAppUrl(e.target.value)}
-                    className="w-full px-6 py-3 text-base border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FF0000] focus:border-transparent"
-                    style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}
-                  />
+            {/* Benji Browser Input Box - Mac Dialog Style */}
+            <div className="max-w-5xl w-full mb-40 rounded-none bg-gradient-to-br from-[#ff8d8d] via-[#FF5C5C] to-[#FF0000] p-1.5 shadow-2xl">
+              <div className="overflow-hidden rounded-none border border-black/10 bg-[#f6f6f6]">
+                <div className="flex items-center gap-2 border-b border-black/10 bg-[#ececec] px-6 py-3">
+                  <span className="h-3 w-3 rounded-full bg-[#ff5f57]" />
+                  <span className="h-3 w-3 rounded-full bg-[#febc2e]" />
+                  <span className="h-3 w-3 rounded-full bg-[#28c840]" />
+                  <span className="ml-4 text-xs font-medium tracking-wide text-gray-500">Benji UI Test Workspace</span>
                 </div>
-
-                {/* Repository Inputs */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-4 p-6">
                   <div>
-                    <label htmlFor="github-owner" className="block text-sm font-medium text-gray-700 mb-2" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
-                      GitHub Owner:
+                    <label htmlFor="app-url" className="mb-2 inline-block bg-black px-3 py-1 text-xs font-medium text-white" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
+                      Your App URL
                     </label>
                     <input
-                      id="github-owner"
-                      title="GitHub Owner"
-                      type="text"
-                      value={repoOwner}
-                      onChange={(e) => setRepoOwner(e.target.value)}
-                      className="w-full px-4 py-3 text-base border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FF0000] focus:border-transparent"
+                      id="app-url"
+                      title="App URL"
+                      type="url"
+                      value={appUrl}
+                      onChange={(e) => setAppUrl(e.target.value)}
+                      className="w-full rounded-md border border-gray-300 bg-white px-6 py-3 text-base focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
                       style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}
                     />
                   </div>
-                  <div>
-                    <label htmlFor="github-repository" className="block text-sm font-medium text-gray-700 mb-2" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
-                      Repository:
-                    </label>
-                    <input
-                      id="github-repository"
-                      title="Repository"
-                      type="text"
-                      value={repoName}
-                      onChange={(e) => setRepoName(e.target.value)}
-                      className="w-full px-4 py-3 text-base border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FF0000] focus:border-transparent"
-                      style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}
-                    />
-                  </div>
-                </div>
 
-                {/* Workflow Description Input */}
-                <div className="flex items-center gap-4">
-                  <div className="flex-1 relative">
-                    <input
-                      type="text"
-                      value={prompt}
-                      onChange={(e) => setPrompt(e.target.value)}
-                      onKeyPress={(e) => e.key === "Enter" && handleRun()}
-                      placeholder="Describe your UI test workflow..."
-                      className="w-full px-6 py-4 pr-14 text-lg border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FF0000] focus:border-transparent"
-                      style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}
-                    />
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <label htmlFor="github-owner" className="mb-2 inline-block bg-black px-3 py-1 text-xs font-medium text-white" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
+                        GitHub Owner
+                      </label>
+                      <input
+                        id="github-owner"
+                        title="GitHub Owner"
+                        type="text"
+                        value={repoOwner}
+                        onChange={(e) => setRepoOwner(e.target.value)}
+                        className="w-full rounded-md border border-gray-300 bg-white px-4 py-3 text-base focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
+                        style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="github-repository" className="mb-2 inline-block bg-black px-3 py-1 text-xs font-medium text-white" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
+                        Repository
+                      </label>
+                      <input
+                        id="github-repository"
+                        title="Repository"
+                        type="text"
+                        value={repoName}
+                        onChange={(e) => setRepoName(e.target.value)}
+                        className="w-full rounded-md border border-gray-300 bg-white px-4 py-3 text-base focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
+                        style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4">
+                    <div className="relative flex-1">
+                      <input
+                        type="text"
+                        value={prompt}
+                        onChange={(e) => setPrompt(e.target.value)}
+                        onKeyPress={(e) => e.key === "Enter" && handleRun()}
+                        placeholder="Describe your UI test workflow..."
+                        className="w-full rounded-md border border-gray-300 bg-white px-6 py-4 pr-14 text-lg focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
+                        style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}
+                      />
+                      <button
+                        onClick={toggleVoiceInput}
+                        className={`absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-2 transition-colors ${
+                          isListening
+                            ? 'animate-pulse bg-red-100 text-[#FF0000]'
+                            : 'text-gray-500 hover:bg-gray-100'
+                        }`}
+                        title={isListening ? 'Stop recording' : 'Start voice input'}
+                      >
+                        {isListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                      </button>
+                    </div>
                     <button
-                      onClick={toggleVoiceInput}
-                      className={`absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-lg transition-colors ${
-                        isListening 
-                          ? 'bg-red-100 text-[#FF0000] animate-pulse' 
-                          : 'hover:bg-gray-100 text-gray-500'
-                      }`}
-                      title={isListening ? 'Stop recording' : 'Start voice input'}
+                      onClick={handleRun}
+                      disabled={!prompt.trim() && !appUrl.trim()}
+                      className="whitespace-nowrap rounded-md bg-[#FF0000] px-10 py-4 text-lg font-medium text-white transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                      style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}
                     >
-                      {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+                      Run →
                     </button>
                   </div>
-                  <button
-                    onClick={handleRun}
-                    disabled={!prompt.trim() && !appUrl.trim()}
-                    className="px-10 py-4 bg-[#FF0000] text-white rounded-xl text-lg font-medium hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
-                    style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}
-                  >
-                    Run →
-                  </button>
+                  {isListening && (
+                    <div className="flex items-center gap-2 text-sm text-[#FF0000]">
+                      <div className="h-2 w-2 animate-pulse rounded-full bg-[#FF0000]"></div>
+                      <span>Listening...</span>
+                    </div>
+                  )}
                 </div>
-                {isListening && (
-                  <div className="flex items-center gap-2 text-sm text-[#FF0000]">
-                    <div className="w-2 h-2 bg-[#FF0000] rounded-full animate-pulse"></div>
-                    <span>Listening...</span>
-                  </div>
-                )}
               </div>
             </div>
           </div>
