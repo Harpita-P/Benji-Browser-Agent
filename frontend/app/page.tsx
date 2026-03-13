@@ -26,6 +26,14 @@ interface GitHubAnalysisResult {
   error?: string;
 }
 
+interface WorkflowRunSummary {
+  id: number;
+  name: string;
+  status: "passed" | "failed";
+  bugDetected: boolean;
+  sessionId?: string | null;
+}
+
 const splitReasonFromText = (text: string): { summaryText: string; reasonText?: string } => {
   const reasonMatch = text.match(/Reason:\s*(.+)$/i);
   return {
@@ -70,6 +78,12 @@ export default function Home() {
   const [analysisPhase, setAnalysisPhase] = useState<string>("");
   const [analysisResult, setAnalysisResult] = useState<GitHubAnalysisResult | null>(null);
   const [showAgentThoughtLogs, setShowAgentThoughtLogs] = useState(false);
+  const [isWorkspaceActive, setIsWorkspaceActive] = useState(false);
+  const [workspaceName, setWorkspaceName] = useState("");
+  const [currentWorkflowName, setCurrentWorkflowName] = useState("");
+  const [workflowRuns, setWorkflowRuns] = useState<WorkflowRunSummary[]>([]);
+  const [codeFixCount, setCodeFixCount] = useState(0);
+  const [fixedSessionIds, setFixedSessionIds] = useState<string[]>([]);
   const rotatingTitles = ["Super Engineer", "Teammate"];
   const [titleIndex, setTitleIndex] = useState(0);
   const [titleVisible, setTitleVisible] = useState(true);
@@ -254,24 +268,45 @@ export default function Home() {
     });
   };
 
-  const handleRun = async () => {
-    if (!prompt.trim() && !appUrl.trim()) return;
-    
-    // Construct full prompt with URL if provided
-    let fullPrompt = prompt;
-    if (appUrl.trim()) {
-      fullPrompt = `First, navigate to ${appUrl}. Then, ${prompt}`;
+  const ensureWorkspace = (): boolean => {
+    if (!appUrl.trim() || !repoOwner.trim() || !repoName.trim()) {
+      alert("Please provide Your App URL, GitHub Owner, and Repository to open a workspace.");
+      return false;
     }
-    
-    if (!fullPrompt.trim()) return;
+
+    if (!isWorkspaceActive) {
+      setIsWorkspaceActive(true);
+      setWorkspaceName(repoName.trim());
+      setShowExecution(true);
+      setSessionStartTime(new Date());
+      setElapsedTime("0:00");
+      setWorkflowRuns([]);
+      setCodeFixCount(0);
+      setFixedSessionIds([]);
+      setLogs([]);
+      setCurrentWorkflowName("");
+    } else if (!sessionStartTime) {
+      setSessionStartTime(new Date());
+    }
+
+    return true;
+  };
+
+  const runWorkflow = async (workflowText: string) => {
+    const workflowName = workflowText.trim();
+    if (!workflowName) return;
+    const fullPrompt = `First, navigate to ${appUrl.trim()}. Then, ${workflowName}`;
 
     setIsRunning(true);
     setShowExecution(true);
+    setCurrentWorkflowName(workflowName);
     setLogs([]);
     setScreenshot(null);
     setCurrentUrl("");
     setTurnNumber(0);
-    setSessionStartTime(new Date());
+    setAnalysisResult(null);
+    setShowAgentThoughtLogs(false);
+    let runSessionId: string | null = null;
 
     const ws = new WebSocket(`${backendWsBase}/ws`);
     wsRef.current = ws;
@@ -290,6 +325,7 @@ export default function Home() {
       switch (message.type) {
         case "session_id":
           if (message.session_id) {
+            runSessionId = message.session_id;
             setSessionId(message.session_id);
           }
           break;
@@ -336,6 +372,8 @@ export default function Home() {
         case "complete":
           if (message.content) {
             const verdictText = message.content.toLowerCase();
+            const isPassed = verdictText.includes("test passed");
+            const isFailed = verdictText.includes("test failed") || verdictText.includes("bug detected");
             if (verdictText.includes("test passed")) {
               addLog(
                 "thinking",
@@ -353,6 +391,18 @@ export default function Home() {
               );
             }
             addLog("complete", message.content);
+            setWorkflowRuns((prev) => [
+              ...prev,
+              {
+                id: prev.length + 1,
+                name: workflowName,
+                status: isPassed ? "passed" : "failed",
+                bugDetected: isFailed,
+                sessionId: runSessionId || sessionId,
+              },
+            ]);
+            addLog("status", "Workspace is ready. Enter the next UI workflow test and click Run Workflow.");
+            setPrompt("");
           }
           setIsRunning(false);
           break;
@@ -375,8 +425,14 @@ export default function Home() {
 
     ws.onclose = () => {
       addLog("status", "Disconnected from agent");
+      wsRef.current = null;
       setIsRunning(false);
     };
+  };
+
+  const handleRun = async () => {
+    if (!ensureWorkspace()) return;
+    await runWorkflow(prompt);
   };
 
   const handleStop = () => {
@@ -389,6 +445,15 @@ export default function Home() {
 
   const handleClose = () => {
     handleStop();
+    setIsWorkspaceActive(false);
+    setWorkspaceName("");
+    setCurrentWorkflowName("");
+    setWorkflowRuns([]);
+    setCodeFixCount(0);
+    setFixedSessionIds([]);
+    setSessionId(null);
+    setAnalysisResult(null);
+    setShowAgentThoughtLogs(false);
     setShowExecution(false);
     setSessionStartTime(null);
     setElapsedTime("0:00");
@@ -430,7 +495,15 @@ export default function Home() {
 
       if (response.ok) {
         setAnalysisPhase("Completed");
-        setAnalysisResult(parseGitHubAnalysis(result));
+        const parsed = parseGitHubAnalysis(result);
+        setAnalysisResult(parsed);
+        if (parsed.prCreated && sessionId) {
+          setFixedSessionIds((prev) => {
+            if (prev.includes(sessionId)) return prev;
+            setCodeFixCount((count) => count + 1);
+            return [...prev, sessionId];
+          });
+        }
       } else {
         setAnalysisPhase("Failed");
         setAnalysisResult({
@@ -495,6 +568,12 @@ export default function Home() {
     }
     return "bg-gray-50 border-gray-300";
   };
+
+  const workflowsTested = workflowRuns.length;
+  const passedWorkflows = workflowRuns.filter((run) => run.status === "passed").length;
+  const failedWorkflows = workflowsTested - passedWorkflows;
+  const bugsFound = workflowRuns.filter((run) => run.bugDetected).length;
+  const progressPercent = workflowsTested === 0 ? 0 : Math.round((passedWorkflows / workflowsTested) * 100);
 
   if (!showExecution) {
     return (
@@ -669,7 +748,7 @@ export default function Home() {
                         type="text"
                         value={prompt}
                         onChange={(e) => setPrompt(e.target.value)}
-                        onKeyPress={(e) => e.key === "Enter" && handleRun()}
+                        onKeyDown={(e) => e.key === "Enter" && handleRun()}
                         placeholder="Describe your UI test workflow..."
                         className="w-full rounded-md border border-gray-300 bg-white px-6 py-4 pr-14 text-lg focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
                         style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}
@@ -688,11 +767,11 @@ export default function Home() {
                     </div>
                     <button
                       onClick={handleRun}
-                      disabled={!prompt.trim() && !appUrl.trim()}
+                      disabled={!appUrl.trim() || !repoOwner.trim() || !repoName.trim() || isRunning}
                       className="whitespace-nowrap rounded-md bg-[#FF0000] px-10 py-4 text-lg font-medium text-white transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
                       style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}
                     >
-                      Run →
+                      {prompt.trim() ? "Run in Workspace →" : "Open Workspace →"}
                     </button>
                   </div>
                   {isListening && (
@@ -778,9 +857,28 @@ export default function Home() {
           <div className="w-7 h-7 bg-[#FF0000] rounded flex items-center justify-center text-white font-bold text-xs">
             B
           </div>
-          <span className="font-semibold">Benji Browser</span>
+          <span className="font-semibold">
+            {workspaceName ? `${workspaceName} Testing Workspace` : "Benji Testing Workspace"}
+          </span>
         </div>
         <div className="flex items-center gap-4">
+          <div className="hidden lg:flex items-center gap-2 border border-gray-300 px-3 py-1.5 bg-gray-50 min-w-[360px]">
+            <input
+              type="text"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && !isRunning && handleRun()}
+              placeholder="Enter next UI workflow test..."
+              className="w-full bg-transparent text-sm outline-none"
+            />
+            <button
+              onClick={handleRun}
+              disabled={isRunning || !prompt.trim()}
+              className="px-3 py-1 text-xs bg-[#FF0000] text-white hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Run Workflow
+            </button>
+          </div>
           <button 
             onClick={handleAnalyzeBugs}
             disabled={!sessionId || isAnalyzing || isRunning}
@@ -802,7 +900,7 @@ export default function Home() {
             onClick={handleClose}
             className="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50 flex items-center gap-2"
           >
-            Close <X className="w-4 h-4" />
+            Close Workspace <X className="w-4 h-4" />
           </button>
         </div>
       </header>
@@ -812,7 +910,62 @@ export default function Home() {
         {/* Left Sidebar - Steps */}
         <div className="w-[420px] bg-[#f7f7f7] border border-gray-200 flex flex-col overflow-hidden shadow-sm flex-shrink-0">
           <div className="p-6 border-b border-gray-200 bg-[#efebf8] flex-shrink-0">
-            <div className="text-[20px] leading-[1.45] font-normal text-[#222] tracking-[-0.01em]">{prompt}</div>
+            <div className="text-xs uppercase tracking-wide text-gray-500 mb-2">Current Workflow</div>
+            <div className="text-[20px] leading-[1.45] font-normal text-[#222] tracking-[-0.01em]">
+              {currentWorkflowName || "Workspace connected. Enter a workflow and run a test."}
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+              <div className="border border-gray-300 bg-white p-2">
+                <div className="text-gray-500">Workflows tested</div>
+                <div className="text-base font-semibold text-gray-900">{workflowsTested}</div>
+              </div>
+              <div className="border border-gray-300 bg-white p-2">
+                <div className="text-gray-500">Progress</div>
+                <div className="text-base font-semibold text-gray-900">{progressPercent}%</div>
+              </div>
+              <div className="border border-green-300 bg-green-50 p-2">
+                <div className="text-green-700">Passed</div>
+                <div className="text-base font-semibold text-green-800">{passedWorkflows}</div>
+              </div>
+              <div className="border border-red-300 bg-red-50 p-2">
+                <div className="text-red-700">Failed</div>
+                <div className="text-base font-semibold text-red-800">{failedWorkflows}</div>
+              </div>
+              <div className="border border-amber-300 bg-amber-50 p-2">
+                <div className="text-amber-700">Bugs found</div>
+                <div className="text-base font-semibold text-amber-800">{bugsFound}</div>
+              </div>
+              <div className="border border-blue-300 bg-blue-50 p-2">
+                <div className="text-blue-700">Code fixes</div>
+                <div className="text-base font-semibold text-blue-800">{codeFixCount}</div>
+              </div>
+            </div>
+            <div className="mt-4">
+              <div className="mb-1 flex items-center justify-between text-xs text-gray-600">
+                <span>Overall testing progress</span>
+                <span>{progressPercent}%</span>
+              </div>
+              <div className="h-2 w-full overflow-hidden bg-gray-200">
+                <div className="h-full bg-[#FF0000] transition-all duration-300" style={{ width: `${progressPercent}%` }} />
+              </div>
+            </div>
+            <div className="mt-4 border border-gray-300 bg-white p-3">
+              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Workflow outcomes</div>
+              {workflowRuns.length === 0 ? (
+                <div className="text-xs text-gray-500">No workflows run yet.</div>
+              ) : (
+                <div className="space-y-1.5 max-h-28 overflow-y-auto pr-1">
+                  {workflowRuns.slice().reverse().map((run) => (
+                    <div key={run.id} className="flex items-center justify-between text-xs">
+                      <span className="text-gray-700 truncate pr-2">{run.name}</span>
+                      <span className={`px-2 py-0.5 font-medium ${run.status === "passed" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                        {run.status === "passed" ? "PASS" : "FAIL"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
           
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
