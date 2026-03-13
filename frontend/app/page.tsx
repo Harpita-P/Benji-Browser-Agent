@@ -952,62 +952,78 @@ export default function Home() {
       <div className="flex-1 flex overflow-hidden min-h-0 gap-4 p-4">
         {/* Left Sidebar - Steps */}
         <div className="w-[420px] bg-[#f7f7f7] border border-gray-200 flex flex-col overflow-hidden shadow-sm flex-shrink-0">
-          <div className="p-6 border-b border-gray-200 bg-[#efebf8] flex-shrink-0">
-            <div className="text-xs uppercase tracking-wide text-gray-500 mb-2">Current Workflow</div>
-            <div className="text-[20px] leading-[1.45] font-normal text-[#222] tracking-[-0.01em]">
-              {currentWorkflowName || "Test Lab connected. Enter a workflow and run a test."}
-            </div>
-            <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-              <div className="border border-gray-300 bg-white p-2">
-                <div className="text-gray-500">Workflows tested</div>
-                <div className="text-base font-semibold text-gray-900">{workflowsTested}</div>
+          <div className="relative overflow-hidden border-b border-gray-200 bg-[#efebf8] p-6 flex-shrink-0">
+            <div
+              className="absolute inset-0 opacity-45"
+              style={{
+                backgroundImage:
+                  "linear-gradient(to right, rgba(148,163,184,0.16) 1px, transparent 1px), linear-gradient(to bottom, rgba(148,163,184,0.16) 1px, transparent 1px)",
+                backgroundSize: "20px 20px",
+              }}
+            />
+            <div className="relative z-10">
+              <div className="text-xs uppercase tracking-wide text-gray-500 mb-2">Current Workflow</div>
+              <div className="text-[20px] leading-[1.45] font-normal text-[#222] tracking-[-0.01em]">
+                {currentWorkflowName || "Test Lab connected. Enter a workflow and run a test."}
               </div>
-              <div className="border border-gray-300 bg-white p-2">
-                <div className="text-gray-500">Progress</div>
-                <div className="text-base font-semibold text-gray-900">{progressPercent}%</div>
-              </div>
-              <div className="border border-green-300 bg-green-50 p-2">
-                <div className="text-green-700">Passed</div>
-                <div className="text-base font-semibold text-green-800">{passedWorkflows}</div>
-              </div>
-              <div className="border border-red-300 bg-red-50 p-2">
-                <div className="text-red-700">Failed</div>
-                <div className="text-base font-semibold text-red-800">{failedWorkflows}</div>
-              </div>
-              <div className="border border-amber-300 bg-amber-50 p-2">
-                <div className="text-amber-700">Bugs found</div>
-                <div className="text-base font-semibold text-amber-800">{bugsFound}</div>
-              </div>
-              <div className="border border-blue-300 bg-blue-50 p-2">
-                <div className="text-blue-700">Code fixes</div>
-                <div className="text-base font-semibold text-blue-800">{codeFixCount}</div>
-              </div>
-            </div>
-            <div className="mt-4">
-              <div className="mb-1 flex items-center justify-between text-xs text-gray-600">
-                <span>Overall testing progress</span>
-                <span>{progressPercent}%</span>
-              </div>
-              <div className="h-2 w-full overflow-hidden bg-gray-200">
-                <div className="h-full bg-[#FF0000] transition-all duration-300" style={{ width: `${progressPercent}%` }} />
-              </div>
-            </div>
-            <div className="mt-4 border border-gray-300 bg-white p-3">
-              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Workflow outcomes</div>
-              {workflowRuns.length === 0 ? (
-                <div className="text-xs text-gray-500">No workflows run yet.</div>
-              ) : (
-                <div className="space-y-1.5 max-h-28 overflow-y-auto pr-1">
-                  {workflowRuns.slice().reverse().map((run) => (
-                    <div key={run.id} className="flex items-center justify-between text-xs">
-                      <span className="text-gray-700 truncate pr-2">{run.name}</span>
-                      <span className={`px-2 py-0.5 font-medium ${run.status === "passed" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-                        {run.status === "passed" ? "PASS" : "FAIL"}
-                      </span>
-                    </div>
-                  ))}
+
+              <div className="mt-4 flex flex-wrap gap-2 text-xs">
+                <div className="inline-flex items-center gap-2 rounded-full border border-slate-300/80 bg-white/85 px-3 py-1.5">
+                  <span className="h-2 w-2 rounded-full bg-slate-500" />
+                  <span className="text-slate-600">Workflows</span>
+                  <span className="font-semibold text-slate-800">{workflowsTested}</span>
                 </div>
-              )}
+                <div className="inline-flex items-center gap-2 rounded-full border border-green-300/90 bg-green-50/90 px-3 py-1.5">
+                  <span className="h-2 w-2 rounded-full bg-green-500" />
+                  <span className="text-green-700">Passed</span>
+                  <span className="font-semibold text-green-800">{passedWorkflows}</span>
+                </div>
+                <div className="inline-flex items-center gap-2 rounded-full border border-red-300/90 bg-red-50/90 px-3 py-1.5">
+                  <span className="h-2 w-2 rounded-full bg-red-500" />
+                  <span className="text-red-700">Failed</span>
+                  <span className="font-semibold text-red-800">{failedWorkflows}</span>
+                </div>
+                <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/90 bg-amber-50/90 px-3 py-1.5">
+                  <span className="h-2 w-2 rounded-full bg-amber-500" />
+                  <span className="text-amber-700">Bugs</span>
+                  <span className="font-semibold text-amber-800">{bugsFound}</span>
+                </div>
+                <div className="inline-flex items-center gap-2 rounded-full border border-blue-300/90 bg-blue-50/90 px-3 py-1.5">
+                  <span className="h-2 w-2 rounded-full bg-blue-500" />
+                  <span className="text-blue-700">Fixes</span>
+                  <span className="font-semibold text-blue-800">{codeFixCount}</span>
+                </div>
+              </div>
+
+              <div className="mt-5">
+                <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Workflow outcomes</div>
+                {workflowRuns.length === 0 ? (
+                  <div className="text-xs text-gray-500">No workflows run yet.</div>
+                ) : (
+                  <ol className="relative max-h-36 space-y-2 overflow-y-auto pr-1">
+                    {workflowRuns.slice().reverse().map((run) => (
+                      <li key={run.id} className="relative pl-10">
+                        <span className="absolute left-0 top-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-300 bg-white text-[11px] font-semibold text-slate-700">
+                          {run.id}
+                        </span>
+                        <div className="border-l border-slate-300/70 pl-3 pb-1">
+                          <div className="flex items-center gap-2">
+                            <span className="truncate text-xs font-medium text-gray-700">{run.name}</span>
+                            <span className={`px-2 py-0.5 text-[10px] font-semibold tracking-wide ${run.status === "passed" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                              {run.status === "passed" ? "PASS" : "FAIL"}
+                            </span>
+                            {run.bugDetected && (
+                              <span className="px-2 py-0.5 text-[10px] font-semibold tracking-wide bg-amber-100 text-amber-700">
+                                BUG
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </div>
             </div>
           </div>
           
