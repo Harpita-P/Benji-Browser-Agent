@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import { Play, Loader2, AlertCircle, Code, MessageSquare, Gamepad2, TrendingUp, X, Clock, Mic, MicOff } from "lucide-react";
 
 interface Message {
@@ -120,7 +121,7 @@ export default function Home() {
       }, 300);
 
       return () => clearTimeout(swapTimeout);
-    }, 2400);
+    }, 3600);
 
     return () => clearInterval(switchInterval);
   }, [rotatingTitles.length]);
@@ -189,33 +190,35 @@ export default function Home() {
   // Animated bug grid
   useEffect(() => {
     const bugs = [
-      { bug: 'Image aspect ratio broken', color: 'bg-purple-100 text-purple-700' },
-      { bug: 'Z-index stacking issues', color: 'bg-red-100 text-red-700' },
-      { bug: 'Missing hover states', color: 'bg-purple-100 text-purple-700' },
-      { bug: 'Modal overlay gaps', color: 'bg-red-100 text-red-700' },
-      { bug: 'Input placeholder style', color: 'bg-purple-100 text-purple-700' },
-      { bug: 'Button alignment off', color: 'bg-red-100 text-red-700' },
+      { bug: 'Image aspect ratio broken', color: 'bg-purple-100/45 text-purple-700/80' },
+      { bug: 'Z-index stacking issues', color: 'bg-red-100/45 text-red-700/80' },
+      { bug: 'Missing hover states', color: 'bg-purple-100/45 text-purple-700/80' },
+      { bug: 'Modal overlay gaps', color: 'bg-red-100/45 text-red-700/80' },
+      { bug: 'Input placeholder style', color: 'bg-purple-100/45 text-purple-700/80' },
+      { bug: 'Button alignment off', color: 'bg-red-100/45 text-red-700/80' },
     ];
 
     const interval = setInterval(() => {
-      const randomBug = bugs[Math.floor(Math.random() * bugs.length)];
-      let randomRow = Math.floor(Math.random() * 10);
-      let randomCol = Math.floor(Math.random() * 16);
-      
-      // Keep second row unlit and avoid center area (rows 2-8, cols 3-13) where text is displayed
-      while (randomRow === 1 || (randomRow >= 2 && randomRow <= 8 && randomCol >= 3 && randomCol <= 13)) {
-        randomRow = Math.floor(Math.random() * 10);
-        randomCol = Math.floor(Math.random() * 16);
+      for (let i = 0; i < 2; i += 1) {
+        const randomBug = bugs[Math.floor(Math.random() * bugs.length)];
+        let randomRow = Math.floor(Math.random() * 10);
+        let randomCol = Math.floor(Math.random() * 16);
+
+        // Keep second row unlit and avoid center area (rows 2-8, cols 3-13) where text is displayed
+        while (randomRow === 1 || (randomRow >= 2 && randomRow <= 8 && randomCol >= 3 && randomCol <= 13)) {
+          randomRow = Math.floor(Math.random() * 10);
+          randomCol = Math.floor(Math.random() * 16);
+        }
+
+        const id = Date.now() + i;
+
+        setActiveBugs(prev => [...prev, { id, row: randomRow, col: randomCol, ...randomBug }]);
+
+        setTimeout(() => {
+          setActiveBugs(prev => prev.filter(b => b.id !== id));
+        }, 4800);
       }
-      
-      const id = Date.now();
-
-      setActiveBugs(prev => [...prev, { id, row: randomRow, col: randomCol, ...randomBug }]);
-
-      setTimeout(() => {
-        setActiveBugs(prev => prev.filter(b => b.id !== id));
-      }, 3000);
-    }, 800);
+    }, 1300);
 
     return () => clearInterval(interval);
   }, []);
@@ -517,7 +520,7 @@ export default function Home() {
             </div>
             <div className="flex items-center gap-3">
               <button className="px-4 py-2 text-sm bg-black text-white rounded-lg hover:bg-gray-800">
-                Get Started on Github
+                View Benji on Github
               </button>
             </div>
           </div>
@@ -552,9 +555,19 @@ export default function Home() {
           </div>
 
           {/* Content Overlay */}
-          <div className="relative z-10 flex flex-col items-center px-12 py-48">
+          <div className="relative z-10 flex flex-col items-center px-12 pt-28 pb-36">
             {/* Main Heading */}
-            <div className="text-center mb-24 max-w-5xl">
+            <div className="text-center mb-16 max-w-5xl">
+              <div className="-mt-2 mb-3 flex justify-center">
+                <Image
+                  src="/agentic_cursor.png"
+                  alt="Agentic cursor"
+                  width={220}
+                  height={220}
+                  className="h-40 w-40 object-contain md:h-52 md:w-52"
+                  priority
+                />
+              </div>
               <h1 className="text-7xl font-normal mb-6 tracking-tight" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
                 Benji is your AI{" "}
                 <span className={`inline-block transition-opacity duration-300 ${titleVisible ? "opacity-100" : "opacity-0"}`}>
@@ -569,7 +582,7 @@ export default function Home() {
                   GitHub ADK MCP
                 </span>
               </div>
-              <div className="text-gray-700 text-lg max-w-4xl mx-auto font-light leading-relaxed text-justify bg-gradient-to-r from-gray-700/36 via-gray-800/30 to-gray-700/36 border border-gray-700/45 backdrop-blur-md rounded-2xl px-6 py-5 md:px-8 md:py-7 shadow-sm">
+              <div className="text-gray-900 text-lg max-w-4xl mx-auto font-light leading-relaxed text-justify bg-gray-100/80 border border-gray-200/80 backdrop-blur-sm rounded-2xl px-6 py-5 md:px-8 md:py-7 shadow-md">
                 <p className="text-center text-xl md:text-2xl font-normal text-violet-400" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
                   What if you could test your app with an AI teammate
                   <br />
@@ -599,14 +612,15 @@ export default function Home() {
               <div className="space-y-4">
                 {/* URL Input */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
+                  <label htmlFor="app-url" className="block text-sm font-medium text-gray-700 mb-2" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
                     Go to:
                   </label>
                   <input
+                    id="app-url"
+                    title="App URL"
                     type="url"
                     value={appUrl}
                     onChange={(e) => setAppUrl(e.target.value)}
-                    placeholder="http://localhost:3000/"
                     className="w-full px-6 py-3 text-base border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FF0000] focus:border-transparent"
                     style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}
                   />
@@ -744,7 +758,7 @@ export default function Home() {
         {/* Footer */}
         <footer className="bg-gray-800 text-white py-4 flex-shrink-0">
           <div className="max-w-7xl mx-auto px-6 text-center text-sm">
-            Powered by <span className="text-[#FF0000] font-semibold">Browserbase</span> & <span className="text-[#FF0000] font-semibold">Stageland</span>
+            Built for the Gemini Live Agents Challenge 2026
           </div>
         </footer>
       </div>

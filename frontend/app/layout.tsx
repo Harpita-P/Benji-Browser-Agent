@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Browser Agent UI",
+  title: "Benji UI Agent",
   description: "AI-powered browser automation interface",
 };
 
