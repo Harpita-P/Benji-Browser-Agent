@@ -202,8 +202,8 @@ export default function Home() {
       let randomRow = Math.floor(Math.random() * 10);
       let randomCol = Math.floor(Math.random() * 16);
       
-      // Avoid center area (rows 2-8, cols 3-13) where text is displayed
-      while (randomRow >= 2 && randomRow <= 8 && randomCol >= 3 && randomCol <= 13) {
+      // Keep second row unlit and avoid center area (rows 2-8, cols 3-13) where text is displayed
+      while (randomRow === 1 || (randomRow >= 2 && randomRow <= 8 && randomCol >= 3 && randomCol <= 13)) {
         randomRow = Math.floor(Math.random() * 10);
         randomCol = Math.floor(Math.random() * 16);
       }
@@ -511,13 +511,13 @@ export default function Home() {
               <div className="w-8 h-8 bg-[#FF0000] rounded-full flex items-center justify-center text-white font-bold text-sm">
                 B
               </div>
-              <span className="text-lg font-semibold tracking-[0.14em] uppercase" style={{fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"}}>
+              <span className="text-lg font-semibold tracking-[0.14em] uppercase" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
                 Benji
               </span>
             </div>
             <div className="flex items-center gap-3">
               <button className="px-4 py-2 text-sm bg-black text-white rounded-lg hover:bg-gray-800">
-                Get Started on Github <span className="text-xs">&gt;</span>
+                Get Started on Github
               </button>
             </div>
           </div>
@@ -569,8 +569,8 @@ export default function Home() {
                   GitHub ADK MCP
                 </span>
               </div>
-              <div className="text-gray-700 text-lg max-w-4xl mx-auto font-light leading-relaxed text-justify bg-gray-800/8 border border-gray-600/25 backdrop-blur-md rounded-2xl px-6 py-5 md:px-8 md:py-7 shadow-sm">
-                <p className="text-center text-xl md:text-2xl font-bold text-violet-400">
+              <div className="text-gray-700 text-lg max-w-4xl mx-auto font-light leading-relaxed text-justify bg-gradient-to-r from-gray-700/36 via-gray-800/30 to-gray-700/36 border border-gray-700/45 backdrop-blur-md rounded-2xl px-6 py-5 md:px-8 md:py-7 shadow-sm">
+                <p className="text-center text-xl md:text-2xl font-normal text-violet-400" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
                   What if you could test your app with an AI teammate
                   <br />
                   who can actually use it?
