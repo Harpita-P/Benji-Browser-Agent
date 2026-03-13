@@ -7,14 +7,35 @@ interface Message {
   type: string;
   content?: string;
   data?: string;
+  session_id?: string;
   turn_number?: number;
   url?: string;
   action?: string;
 }
 
+interface GitHubAnalysisResult {
+  status: string;
+  analysis: string;
+  agent_response?: string;
+  branch?: string;
+  commit?: string;
+  prUrl?: string;
+  error?: string;
+}
+
+const splitReasonFromText = (text: string): { summaryText: string; reasonText?: string } => {
+  const reasonMatch = text.match(/Reason:\s*(.+)$/i);
+  return {
+    summaryText: reasonMatch ? text.replace(/\s*Reason:\s*.+$/i, "").trim() : text,
+    reasonText: reasonMatch?.[1]?.trim(),
+  };
+};
+
 export default function Home() {
   const [prompt, setPrompt] = useState("");
   const [appUrl, setAppUrl] = useState("");
+  const [repoOwner, setRepoOwner] = useState("pitadeveloper");
+  const [repoName, setRepoName] = useState("Benji-Test");
   const [isRunning, setIsRunning] = useState(false);
   const [screenshot, setScreenshot] = useState<string | null>(null);
   const [logs, setLogs] = useState<Array<{ type: string; content: string; timestamp: Date; stepNumber?: number; stepTitle?: string; functionName?: string }>>([]);
@@ -28,9 +49,29 @@ export default function Home() {
   const [isListening, setIsListening] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisPhase, setAnalysisPhase] = useState<string>("");
+  const [analysisResult, setAnalysisResult] = useState<GitHubAnalysisResult | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const logsEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
+
+  const parseGitHubAnalysis = (result: any): GitHubAnalysisResult => {
+    const analysisText = result?.analysis || result?.agent_response || "";
+    const branchMatch = analysisText.match(/Branch:\s*([^\n]+)/i);
+    const commitMatch = analysisText.match(/Commit:\s*([^\n]+)/i);
+    const prLineMatch = analysisText.match(/PR:\s*(https?:\/\/[^\s\n]+)/i);
+    const prUrlMatch = analysisText.match(/https:\/\/github\.com\/[^\s\n]+\/pull\/\d+/i);
+
+    return {
+      status: result?.status || "unknown",
+      analysis: analysisText || "No analysis returned",
+      agent_response: result?.agent_response,
+      branch: branchMatch?.[1]?.trim(),
+      commit: commitMatch?.[1]?.trim(),
+      prUrl: prLineMatch?.[1]?.trim() || prUrlMatch?.[0],
+      error: result?.error,
+    };
+  };
 
   const scrollToBottom = () => {
     logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -136,35 +177,34 @@ export default function Home() {
   }, []);
 
   const addLog = (type: string, content: string) => {
-    let stepNumber: number | undefined;
-    let stepTitle: string | undefined;
-    let functionName: string | undefined;
+    setLogs((prev) => {
+      let stepNumber: number | undefined;
+      let stepTitle: string | undefined;
+      let functionName: string | undefined;
 
-    if (type === 'action') {
-      setStepCounter(prev => {
-        stepNumber = prev + 1;
-        return prev + 1;
-      });
-      
-      // Extract function name from action content
-      const match = content.match(/Executing: (\w+)/);
-      if (match) {
-        functionName = match[1];
-        // Generate step title based on function
-        const titleMap: Record<string, string> = {
-          'navigate': 'Navigate',
-          'click_at': 'Click',
-          'type_text_at': 'Type Text',
-          'scroll_document': 'Scroll',
-          'hover_at': 'Hover',
-          'open_web_browser': 'Open Browser',
-          'search': 'Search',
-        };
-        stepTitle = titleMap[functionName] || functionName;
+      if (type === "action") {
+        stepNumber = prev.filter((log) => log.type === "action").length + 1;
+        setStepCounter(stepNumber);
+
+        const match = content.match(/Executing: (\w+)/);
+        if (match) {
+          functionName = match[1];
+          const titleMap: Record<string, string> = {
+            navigate: "Navigate",
+            click_at: "Click",
+            type_text_at: "Type Text",
+            wait_5_seconds: "Wait 5 Seconds",
+            scroll_document: "Scroll",
+            hover_at: "Hover",
+            open_web_browser: "Open Browser",
+            search: "Search",
+          };
+          stepTitle = titleMap[functionName] || functionName;
+        }
       }
-    }
 
-    setLogs((prev) => [...prev, { type, content, timestamp: new Date(), stepNumber, stepTitle, functionName }]);
+      return [...prev, { type, content, timestamp: new Date(), stepNumber, stepTitle, functionName }];
+    });
   };
 
   const handleRun = async () => {
@@ -248,6 +288,23 @@ export default function Home() {
 
         case "complete":
           if (message.content) {
+            const verdictText = message.content.toLowerCase();
+            if (verdictText.includes("test passed")) {
+              addLog(
+                "thinking",
+                "Final QA summary: TEST PASSED — the workflow reached the expected outcome and UI behavior matched the requirement."
+              );
+            } else if (verdictText.includes("test failed") || verdictText.includes("bug detected")) {
+              addLog(
+                "thinking",
+                "Final QA summary: TEST FAILED - BUG DETECTED — the workflow did not reach the expected successful outcome."
+              );
+            } else {
+              addLog(
+                "thinking",
+                `Final QA summary: ${message.content}`
+              );
+            }
             addLog("complete", message.content);
           }
           setIsRunning(false);
@@ -296,16 +353,17 @@ export default function Home() {
       return;
     }
 
-    const repoOwner = prompt("Enter GitHub repository owner:");
-    const repoName = prompt("Enter GitHub repository name:");
-    
-    if (!repoOwner || !repoName) {
+    if (!repoOwner.trim() || !repoName.trim()) {
+      alert("Please provide repository owner and repository name on the main page.");
       return;
     }
 
     setIsAnalyzing(true);
+    setAnalysisResult(null);
+    setAnalysisPhase("Starting GitHub MCP analysis...");
 
     try {
+      setAnalysisPhase("Sending session logs to GitHub agent...");
       const response = await fetch("http://localhost:8080/analyze-bugs", {
         method: "POST",
         headers: {
@@ -313,21 +371,33 @@ export default function Home() {
         },
         body: JSON.stringify({
           session_id: sessionId,
-          repo_owner: repoOwner,
-          repo_name: repoName,
+          repo_owner: repoOwner.trim(),
+          repo_name: repoName.trim(),
           app_url: appUrl || window.location.origin,
         }),
       });
 
+      setAnalysisPhase("GitHub agent is finalizing output...");
       const result = await response.json();
 
       if (response.ok) {
-        alert(`Bug Analysis Complete!\n\nStatus: ${result.status}\n\nAnalysis:\n${result.analysis}`);
+        setAnalysisPhase("Completed");
+        setAnalysisResult(parseGitHubAnalysis(result));
       } else {
-        alert(`Analysis failed: ${result.detail || 'Unknown error'}`);
+        setAnalysisPhase("Failed");
+        setAnalysisResult({
+          status: "failed",
+          analysis: "",
+          error: result.detail || "Unknown error",
+        });
       }
     } catch (error) {
-      alert(`Error: ${error}`);
+      setAnalysisPhase("Failed");
+      setAnalysisResult({
+        status: "failed",
+        analysis: "",
+        error: String(error),
+      });
     } finally {
       setIsAnalyzing(false);
     }
@@ -476,6 +546,36 @@ export default function Home() {
                   />
                 </div>
 
+                {/* Repository Inputs */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
+                      GitHub Owner:
+                    </label>
+                    <input
+                      type="text"
+                      value={repoOwner}
+                      onChange={(e) => setRepoOwner(e.target.value)}
+                      placeholder="pitadeveloper"
+                      className="w-full px-4 py-3 text-base border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FF0000] focus:border-transparent"
+                      style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
+                      Repository:
+                    </label>
+                    <input
+                      type="text"
+                      value={repoName}
+                      onChange={(e) => setRepoName(e.target.value)}
+                      placeholder="Benji-Test"
+                      className="w-full px-4 py-3 text-base border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FF0000] focus:border-transparent"
+                      style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}
+                    />
+                  </div>
+                </div>
+
                 {/* Workflow Description Input */}
                 <div className="flex items-center gap-4">
                   <div className="flex-1 relative">
@@ -621,28 +721,18 @@ export default function Home() {
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden min-h-0 gap-6 p-6">
+      <div className="flex-1 flex overflow-hidden min-h-0 gap-4 p-4">
         {/* Left Sidebar - Steps */}
-        <div className="w-80 bg-white rounded-lg border border-gray-200 flex flex-col overflow-hidden shadow-sm flex-shrink-0">
-          <div className="p-4 border-b border-gray-200 flex-shrink-0">
-            <div className="text-sm font-medium mb-2">{prompt}</div>
-            <div className="flex items-center gap-4 text-xs text-gray-500">
-              <div className="flex items-center gap-1">
-                <span>🤖</span>
-                <span>Open Browser</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <span>📝</span>
-                <span>ToolCall</span>
-              </div>
-            </div>
+        <div className="w-[420px] bg-[#f7f7f7] border border-gray-200 flex flex-col overflow-hidden shadow-sm flex-shrink-0">
+          <div className="p-6 border-b border-gray-200 bg-[#efebf8] flex-shrink-0">
+            <div className="text-[20px] leading-[1.45] font-normal text-[#222] tracking-[-0.01em]">{prompt}</div>
           </div>
           
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
             {logs.map((log, index) => {
-              // Group thinking logs with their corresponding action
+              // Group thinking logs with their corresponding action card
               if (log.type === 'thinking') {
-                return null; // Skip thinking logs, they'll be shown with actions
+                return null;
               }
 
               // Find associated thinking log
@@ -650,35 +740,38 @@ export default function Home() {
 
               if (log.stepNumber && log.stepTitle) {
                 // Check if this is a bug/failure step
-                const isBugStep = thinkingLog && (thinkingLog.content.toLowerCase().includes('test failed') || thinkingLog.content.toLowerCase().includes('bug detected'));
-                const bgColor = isBugStep ? 'bg-red-50' : 'bg-purple-50';
-                const borderColor = isBugStep ? 'border-red-200' : 'border-purple-200';
+                const thinkingLower = thinkingLog?.content.toLowerCase() || '';
+                const isBugStep = thinkingLower.includes('test failed') || thinkingLower.includes('bug detected');
+                const isPassStep = thinkingLower.includes('test passed');
+                const bgColor = isBugStep ? 'bg-[#fff2f2]' : isPassStep ? 'bg-[#f0fff4]' : 'bg-white';
+                const borderColor = isBugStep ? 'border-red-200' : isPassStep ? 'border-green-200' : 'border-gray-200';
                 
                 return (
-                  <div key={index} className={`${bgColor} rounded-lg border ${borderColor} overflow-hidden`}>
+                  <div key={index} className={`${bgColor} border ${borderColor} overflow-hidden`}>
                     {/* Step Header */}
-                    <div className="p-4">
-                      <div className="flex items-start gap-3 mb-3">
-                        <div className="w-8 h-8 rounded-lg bg-white/50 text-purple-700 font-semibold text-sm flex items-center justify-center flex-shrink-0">
+                    <div className="p-6">
+                      <div className="flex items-start gap-3 mb-4">
+                        <div className="w-7 h-7 bg-[#eceff3] text-[#4b5563] font-semibold text-sm flex items-center justify-center flex-shrink-0 border border-[#d9dde3]">
                           {log.stepNumber}
                         </div>
                         <div className="flex-1">
-                          <h3 className="font-semibold text-base mb-1">{log.stepTitle}</h3>
+                          <h3 className="font-medium text-lg leading-tight tracking-[-0.01em] text-[#222]">{log.stepTitle}</h3>
                         </div>
                       </div>
 
                       {/* Thinking/Explanation */}
                       {thinkingLog && (
-                        <p className="text-sm text-gray-700 mb-3 leading-relaxed">
+                        <p className="text-sm leading-6 text-[#222] mb-4">
                           {thinkingLog.content}
                         </p>
                       )}
 
                       {/* ToolCall Section */}
                       {log.functionName && (
-                        <div className="flex items-center gap-2 text-xs">
-                          <span className="text-gray-500">› ToolCall</span>
-                          <code className="px-2 py-0.5 bg-white/60 rounded text-gray-800 font-mono">
+                        <div className="flex items-center gap-2 text-sm leading-tight">
+                          <span className="text-[#4b5563]">›</span>
+                          <span className="text-[#4b5563]">ToolCall</span>
+                          <code className="px-2 py-0.5 bg-[#eceff3] border border-[#d9dde3] text-[#111827] font-mono text-sm">
                             {log.functionName}
                           </code>
                         </div>
@@ -691,7 +784,7 @@ export default function Home() {
               // For status logs - show condensed
               if (log.type === 'status') {
                 return (
-                  <div key={index} className="flex items-center gap-2 text-xs text-gray-500 px-2">
+                  <div key={index} className="flex items-center gap-2 text-sm text-gray-500 px-2">
                     <span>{getLogIcon(log.type)}</span>
                     <span>{log.content}</span>
                   </div>
@@ -699,6 +792,12 @@ export default function Home() {
               }
 
               // For error and complete logs
+              const reasonMatch = log.type === "complete" ? log.content.match(/Reason:\s*(.+)$/i) : null;
+              const summaryText = reasonMatch
+                ? log.content.replace(/\s*Reason:\s*.+$/i, "").trim()
+                : log.content;
+              const reasonText = reasonMatch?.[1]?.trim();
+
               return (
                 <div
                   key={index}
@@ -707,7 +806,12 @@ export default function Home() {
                   <div className="flex items-start gap-2">
                     <span className="text-base">{getLogIcon(log.type)}</span>
                     <div className="flex-1 min-w-0">
-                      <p className="break-words text-sm">{log.content}</p>
+                      <p className="break-words text-sm">{summaryText}</p>
+                      {reasonText && (
+                        <div className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs text-amber-800">
+                          <span className="font-semibold">Reason:</span> {reasonText}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -755,6 +859,92 @@ export default function Home() {
               </div>
             )}
           </div>
+
+          {(isAnalyzing || analysisResult) && (
+            <div className="border-t border-gray-200 bg-gray-50 px-4 py-3 flex-shrink-0">
+              <div className="flex items-center gap-2 mb-2">
+                <Code className="w-4 h-4 text-purple-600" />
+                <span className="text-sm font-medium text-gray-800">GitHub Agent Analysis</span>
+                {isAnalyzing && <Loader2 className="w-4 h-4 animate-spin text-purple-600" />}
+              </div>
+
+              {isAnalyzing && (
+                <div className="text-sm text-gray-700 mb-2">
+                  {analysisPhase || "Running..."}
+                </div>
+              )}
+
+              {analysisResult && (
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-600">Status:</span>
+                    <span
+                      className={`px-2 py-0.5 rounded text-xs font-medium ${
+                        analysisResult.status === "success"
+                          ? "bg-green-100 text-green-700"
+                          : "bg-red-100 text-red-700"
+                      }`}
+                    >
+                      {analysisResult.status}
+                    </span>
+                  </div>
+
+                  {analysisResult.branch && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-600">Branch:</span>
+                      <code className="px-2 py-0.5 bg-gray-100 border border-gray-200 rounded text-xs">
+                        {analysisResult.branch}
+                      </code>
+                    </div>
+                  )}
+
+                  {analysisResult.commit && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-600">Commit:</span>
+                      <code className="px-2 py-0.5 bg-gray-100 border border-gray-200 rounded text-xs">
+                        {analysisResult.commit}
+                      </code>
+                    </div>
+                  )}
+
+                  {analysisResult.prUrl && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-600">PR:</span>
+                      <a
+                        href={analysisResult.prUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-700 underline break-all"
+                      >
+                        {analysisResult.prUrl}
+                      </a>
+                    </div>
+                  )}
+
+                  {analysisResult.error && (
+                    <div className="text-red-700 bg-red-50 border border-red-200 rounded p-2">
+                      {analysisResult.error}
+                    </div>
+                  )}
+
+                  {analysisResult.analysis &&
+                    (() => {
+                      const { summaryText, reasonText } = splitReasonFromText(analysisResult.analysis);
+                      return (
+                        <div className="max-h-40 overflow-y-auto bg-white border border-gray-200 rounded p-2 text-xs text-gray-700 whitespace-pre-wrap">
+                          <div>{summaryText}</div>
+                          {reasonText && (
+                            <div className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs text-amber-800 whitespace-normal">
+                              <span className="font-semibold">Reason:</span> {reasonText}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                </div>
+              )}
+            </div>
+          )}
           
           {/* Bottom Bar */}
           <div className="border-t border-gray-200 px-4 py-3 bg-white flex items-center justify-between flex-shrink-0">

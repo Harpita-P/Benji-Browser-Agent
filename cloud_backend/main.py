@@ -10,10 +10,8 @@ from typing import Dict, Optional
 import os
 import json
 import asyncio
-from typing import Dict
 from dotenv import load_dotenv
 from github_agent import create_github_agent
-from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -33,10 +31,27 @@ frontend_clients: Dict[str, WebSocket] = {}
 
 # Store session logs for bug analysis
 session_logs: Dict[str, list] = {}  # session_id -> list of log entries
+session_meta: Dict[str, Dict] = {}  # session_id -> metadata for run outcome and bug flags
 
 # Gemini configuration - Computer Use model
 COMPUTER_USE_MODEL_ID = os.getenv("COMPUTER_USE_MODEL_ID", "gemini-2.5-computer-use-preview-10-2025")
 print(f"🔧 Using model: {COMPUTER_USE_MODEL_ID}")
+
+QA_WORKFLOW_SYSTEM_PROMPT = """
+You are a QA Engineer agent testing visual UI workflows in the application.
+
+Your job:
+1. Execute the provided user workflow exactly and validate expected behavior.
+2. Keep testing until the desired workflow goal is completed or clearly blocked.
+3. If the workflow cannot reach the expected successful outcome, explicitly say:
+   TEST FAILED - BUG DETECTED
+4. If the workflow reaches the expected successful outcome, explicitly say:
+   TEST PASSED
+
+Important:
+- Be explicit about why the test passed or failed.
+- If failed, include "BUG DETECTED" in your thinking text.
+""".strip()
 
 # Computer Use tool configuration (using built-in Computer Use tool)
 config = genai.types.GenerateContentConfig(
@@ -124,6 +139,11 @@ async def frontend_endpoint(websocket: WebSocket):
         import uuid
         session_id = str(uuid.uuid4())
         session_logs[session_id] = []
+        session_meta[session_id] = {
+            "status": "running",
+            "bug_detected": False,
+            "client_id": client_id,
+        }
         
         # Log initial prompt
         session_logs[session_id].append({
@@ -138,12 +158,23 @@ async def frontend_endpoint(websocket: WebSocket):
             "session_id": session_id
         })
         
+        qa_prompt = f"""
+{QA_WORKFLOW_SYSTEM_PROMPT}
+
+Expected workflow to test:
+{prompt}
+
+Run the workflow now. End with either:
+- TEST PASSED
+- TEST FAILED - BUG DETECTED
+""".strip()
+
         # Initialize conversation history
         contents = [
             genai.types.Content(
                 role="user",
                 parts=[
-                    genai.types.Part.from_text(text=prompt),
+                    genai.types.Part.from_text(text=qa_prompt),
                     genai.types.Part.from_bytes(
                         data=initial_screenshot,
                         mime_type="image/png"
@@ -191,6 +222,14 @@ async def frontend_endpoint(websocket: WebSocket):
                     "turn": turn_number,
                     "timestamp": str(asyncio.get_event_loop().time())
                 })
+                lower_thinking = thinking_content.lower()
+                if "bug detected" in thinking_content.lower():
+                    session_meta[session_id]["bug_detected"] = True
+                if "test failed" in lower_thinking:
+                    session_meta[session_id]["status"] = "failed"
+                    session_meta[session_id]["bug_detected"] = True
+                if "test passed" in lower_thinking and session_meta[session_id]["status"] == "running":
+                    session_meta[session_id]["status"] = "passed"
             
             # Extract function calls
             function_calls = [
@@ -200,11 +239,35 @@ async def frontend_endpoint(websocket: WebSocket):
             ]
             
             if not function_calls:
+                current_status = session_meta[session_id]["status"]
+                if current_status in {"passed", "failed"}:
+                    await websocket.send_json({
+                        "type": "status",
+                        "content": "Agent reported final test verdict"
+                    })
+                    break
+
                 await websocket.send_json({
                     "type": "status",
-                    "content": "Agent completed task"
+                    "content": "No action returned yet; continuing test execution"
                 })
-                break
+
+                contents.append(
+                    genai.types.Content(
+                        role="user",
+                        parts=[
+                            genai.types.Part.from_text(
+                                text=(
+                                    "Continue executing the workflow. Do not stop until you can provide one of "
+                                    "these exact final verdicts based on observed behavior: "
+                                    "'TEST PASSED' or 'TEST FAILED - BUG DETECTED'."
+                                )
+                            )
+                        ],
+                    )
+                )
+                await asyncio.sleep(0.3)
+                continue
             
             # Execute each function call via Playwright client and build function responses
             function_responses = []
@@ -281,9 +344,43 @@ async def frontend_endpoint(websocket: WebSocket):
             
             await asyncio.sleep(0.5)
         
+        if session_meta.get(session_id, {}).get("status") == "running":
+            session_meta[session_id]["status"] = "failed"
+            session_meta[session_id]["bug_detected"] = True
+            session_meta[session_id]["error"] = "Run ended without explicit TEST PASSED/FAILED verdict"
+
+        final_status = session_meta.get(session_id, {}).get("status", "failed")
+
+        failure_reason = None
+        if final_status != "passed":
+            for log_entry in reversed(session_logs.get(session_id, [])):
+                if log_entry.get("type") != "thinking":
+                    continue
+                thought = str(log_entry.get("content", "")).strip()
+                lower_thought = thought.lower()
+                if "test failed" in lower_thought or "bug detected" in lower_thought:
+                    failure_reason = thought
+                    break
+
+            if not failure_reason:
+                failure_reason = "Workflow did not reach expected successful outcome."
+
+        final_message = (
+            "TEST PASSED"
+            if final_status == "passed"
+            else f"TEST FAILED - BUG DETECTED. Reason: {failure_reason}"
+        )
+
+        session_logs[session_id].append({
+            "type": "complete",
+            "content": final_message,
+            "turn": turn_number,
+            "timestamp": str(asyncio.get_event_loop().time())
+        })
+
         await websocket.send_json({
             "type": "complete",
-            "content": "Agent finished"
+            "content": final_message
         })
         
     except WebSocketDisconnect:
@@ -292,6 +389,9 @@ async def frontend_endpoint(websocket: WebSocket):
         print(f"Frontend client disconnected: {client_id}")
     except Exception as e:
         print(f"Error in agent loop: {e}")
+        if "session_id" in locals() and session_id in session_meta:
+            session_meta[session_id]["status"] = "failed"
+            session_meta[session_id]["error"] = str(e)
         await websocket.send_json({
             "type": "error",
             "content": str(e)
@@ -317,9 +417,16 @@ async def analyze_bugs(request: BugAnalysisRequest):
         raise HTTPException(status_code=404, detail="Session not found")
     
     logs = session_logs[request.session_id]
+    meta = session_meta.get(request.session_id, {})
     
     if not logs:
         raise HTTPException(status_code=400, detail="No logs found for this session")
+
+    if meta.get("status") != "failed" or not meta.get("bug_detected"):
+        raise HTTPException(
+            status_code=400,
+            detail="GitHub bug analysis is only available for failed sessions with bug_detected=true"
+        )
     
     try:
         # Create GitHub agent
@@ -346,7 +453,8 @@ async def list_sessions():
             {
                 "session_id": sid,
                 "log_count": len(logs),
-                "first_log": logs[0] if logs else None
+                "first_log": logs[0] if logs else None,
+                "meta": session_meta.get(sid, {})
             }
             for sid, logs in session_logs.items()
         ]
