@@ -583,10 +583,8 @@ export default function Home() {
                 </span>
               </div>
               <div className="text-gray-900 text-lg max-w-4xl mx-auto font-light leading-relaxed text-justify bg-gray-100/80 border border-gray-200/80 backdrop-blur-sm rounded-2xl px-6 py-5 md:px-8 md:py-7 shadow-md">
-                <p className="text-center text-xl md:text-2xl font-normal text-violet-400" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
-                  What if you could test your app with an AI teammate
-                  <br />
-                  who can actually use it?
+                <p className="text-center text-xl md:text-2xl font-normal text-[#FF0000]" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
+                  Build and ship with more confidence with an AI teammate who can navigate your UI in real time
                 </p>
                 <p className="mt-4 flex items-start gap-3">
                   <span className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-red-100">
