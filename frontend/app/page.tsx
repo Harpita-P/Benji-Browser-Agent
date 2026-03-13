@@ -401,7 +401,7 @@ export default function Home() {
                 sessionId: runSessionId || sessionId,
               },
             ]);
-            addLog("status", "Workspace is ready. Enter the next UI workflow test and click Run Workflow.");
+            addLog("status", "Benji Test Lab is ready. Enter the next UI workflow test and click Run Workflow.");
             setPrompt("");
           }
           setIsRunning(false);
@@ -661,28 +661,71 @@ export default function Home() {
                   GitHub ADK MCP
                 </span>
               </div>
-              <div className="text-gray-900 text-lg max-w-4xl mx-auto font-light leading-relaxed text-justify bg-amber-50/90 border border-amber-100/90 backdrop-blur-sm rounded-2xl px-6 py-5 md:px-8 md:py-7 shadow-sm">
-                <p className="text-center text-xl md:text-2xl font-normal text-[#FF0000]" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
-                  Build and ship with more confidence with an AI teammate
-                  <br />
-                  who can navigate your UI in real time
-                </p>
-                <p className="mt-4 flex items-start gap-3">
-                  <span className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-red-100">
-                    <Code size={16} className="text-[#FF0000]" />
-                  </span>
-                  <span>
-                    <span className="font-semibold">Talk to Benji</span> - A <span className="font-semibold">live multimodal engineer</span> with <span className="font-semibold">advanced screen understanding</span> who navigates your UI like a real user, runs precise end to end workflows, and catches the bugs that slip through!
-                  </span>
-                </p>
-                <p className="mt-3 flex items-start gap-3">
-                  <span className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-red-100">
-                    <TrendingUp size={16} className="text-[#FF0000]" />
-                  </span>
-                  <span>
-                    Benji also <span className="font-semibold">writes the code to fix them</span>, so you <span className="font-semibold">ship faster</span> and build a better app people genuinely love using!
-                  </span>
-                </p>
+              <div className="relative mx-auto w-full max-w-5xl overflow-hidden border border-amber-200/90 bg-amber-50/95 shadow-md">
+                <div
+                  className="absolute inset-0 opacity-50"
+                  style={{
+                    backgroundImage:
+                      "linear-gradient(to right, rgba(148,163,184,0.16) 1px, transparent 1px), linear-gradient(to bottom, rgba(148,163,184,0.16) 1px, transparent 1px)",
+                    backgroundSize: "26px 26px",
+                  }}
+                />
+                <div className="relative z-10 grid gap-8 p-6 md:grid-cols-2 md:p-8">
+                  <div className="text-left">
+                    <div className="mb-3 inline-flex items-center gap-2 border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#FF0000]" />
+                      Benji Test Surface
+                    </div>
+                    <p className="text-2xl font-medium leading-tight text-[#FF0000] md:text-3xl" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
+                      Build and ship with more confidence
+                    </p>
+                    <p className="mt-3 text-sm text-gray-700 md:text-base">
+                      Benji tests real UI workflows, catches visual bugs, and writes fixes directly in code.
+                    </p>
+                    <div className="mt-5 flex flex-wrap gap-2 text-xs font-medium">
+                      <span className="border border-gray-300 bg-white px-2.5 py-1 text-gray-700">Runs real workflows</span>
+                      <span className="border border-gray-300 bg-white px-2.5 py-1 text-gray-700">Finds UI regressions</span>
+                      <span className="border border-gray-300 bg-white px-2.5 py-1 text-gray-700">Suggests code fixes</span>
+                      <span className="border border-gray-300 bg-white px-2.5 py-1 text-gray-700">Opens PR-ready changes</span>
+                    </div>
+                  </div>
+
+                  <div className="relative min-h-[220px] md:min-h-[250px]">
+                    <div className="absolute left-6 top-6 w-[74%] border border-gray-300 bg-white/95 p-4 shadow-sm">
+                      <div className="mb-3 flex items-center justify-between text-[11px] uppercase tracking-wide text-gray-500">
+                        <span>Live Test Board</span>
+                        <span className="bg-red-100 px-2 py-0.5 text-red-700">Active</span>
+                      </div>
+                      <div className="space-y-2 text-xs">
+                        <div className="flex items-center justify-between border border-gray-200 bg-gray-50 px-2 py-1">
+                          <span>Login flow</span>
+                          <span className="bg-green-100 px-2 py-0.5 text-green-700">Pass</span>
+                        </div>
+                        <div className="flex items-center justify-between border border-gray-200 bg-gray-50 px-2 py-1">
+                          <span>Checkout flow</span>
+                          <span className="bg-red-100 px-2 py-0.5 text-red-700">Fail</span>
+                        </div>
+                        <div className="flex items-center justify-between border border-gray-200 bg-gray-50 px-2 py-1">
+                          <span>Task creation</span>
+                          <span className="bg-amber-100 px-2 py-0.5 text-amber-700">Review</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="absolute right-2 top-2 border border-red-200 bg-red-50/95 px-3 py-2 text-xs text-red-700 shadow-sm">
+                      Modal overflow bug
+                    </div>
+                    <div className="absolute right-0 top-20 border border-blue-200 bg-blue-50/95 px-3 py-2 text-xs text-blue-700 shadow-sm">
+                      PR opened
+                    </div>
+                    <div className="absolute bottom-3 right-6 border border-green-200 bg-green-50/95 px-3 py-2 text-xs text-green-700 shadow-sm">
+                      2 fixes proposed
+                    </div>
+                    <div className="absolute bottom-0 left-0 border border-gray-300 bg-white/95 px-3 py-2 text-xs text-gray-700 shadow-sm">
+                      12 workflows run
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -693,7 +736,7 @@ export default function Home() {
                   <span className="h-3 w-3 rounded-full bg-[#ff5f57]" />
                   <span className="h-3 w-3 rounded-full bg-[#febc2e]" />
                   <span className="h-3 w-3 rounded-full bg-[#28c840]" />
-                  <span className="ml-4 text-xs font-medium tracking-wide text-gray-500">Benji UI Test Workspace</span>
+                  <span className="ml-4 text-xs font-medium tracking-wide text-gray-500">Benji Test Lab</span>
                 </div>
                 <div className="space-y-4 p-6">
                   <div>
@@ -771,7 +814,7 @@ export default function Home() {
                       className="whitespace-nowrap rounded-md bg-[#FF0000] px-10 py-4 text-lg font-medium text-white transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
                       style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}
                     >
-                      {prompt.trim() ? "Run in Workspace →" : "Open Workspace →"}
+                      {prompt.trim() ? "Run in Test Lab →" : "Open Test Lab →"}
                     </button>
                   </div>
                   {isListening && (
@@ -858,7 +901,7 @@ export default function Home() {
             B
           </div>
           <span className="font-semibold">
-            {workspaceName ? `${workspaceName} Testing Workspace` : "Benji Testing Workspace"}
+            {workspaceName ? `${workspaceName} · Benji Test Lab` : "Benji Test Lab"}
           </span>
         </div>
         <div className="flex items-center gap-4">
@@ -912,7 +955,7 @@ export default function Home() {
           <div className="p-6 border-b border-gray-200 bg-[#efebf8] flex-shrink-0">
             <div className="text-xs uppercase tracking-wide text-gray-500 mb-2">Current Workflow</div>
             <div className="text-[20px] leading-[1.45] font-normal text-[#222] tracking-[-0.01em]">
-              {currentWorkflowName || "Workspace connected. Enter a workflow and run a test."}
+              {currentWorkflowName || "Test Lab connected. Enter a workflow and run a test."}
             </div>
             <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
               <div className="border border-gray-300 bg-white p-2">

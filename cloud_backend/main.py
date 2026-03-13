@@ -31,6 +31,76 @@ def _clip_text(value: str, limit: int = 320) -> str:
     return f"{text[:limit]}..."
 
 
+def _is_quota_or_rate_limit_error(exc: Exception) -> bool:
+    text = str(exc).lower()
+    return any(
+        marker in text
+        for marker in [
+            "resource_exhausted",
+            "quota",
+            "429",
+            "rate limit",
+            "too many requests",
+        ]
+    )
+
+
+def _friendly_quota_message() -> str:
+    return (
+        "Sorry, I've hit the quota limit right now — let me try again soon. "
+        "Please wait a moment and retry."
+    )
+
+
+async def _generate_content_with_retry(
+    client: genai.Client,
+    *,
+    model: str,
+    contents,
+    config,
+    websocket: WebSocket,
+    session_id: str,
+    turn_number: int,
+):
+    max_attempts = int(os.getenv("MODEL_RETRY_MAX_ATTEMPTS", "4"))
+    base_delay_seconds = float(os.getenv("MODEL_RETRY_BASE_DELAY_SECONDS", "1.5"))
+
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return client.models.generate_content(
+                model=model,
+                contents=contents,
+                config=config,
+            )
+        except Exception as exc:
+            is_quota_error = _is_quota_or_rate_limit_error(exc)
+            is_last_attempt = attempt == max_attempts
+            logger.warning(
+                "generate_content failed session_id=%s turn=%s attempt=%s/%s quota_or_rate_limit=%s error=%s",
+                session_id,
+                turn_number,
+                attempt,
+                max_attempts,
+                is_quota_error,
+                _clip_text(str(exc), 260),
+            )
+
+            if not is_quota_error:
+                raise
+
+            if is_last_attempt:
+                raise RuntimeError(_friendly_quota_message()) from exc
+
+            delay = base_delay_seconds * (2 ** (attempt - 1))
+            await websocket.send_json({
+                "type": "status",
+                "content": f"{_friendly_quota_message()} Retrying in {delay:.1f}s...",
+            })
+            await asyncio.sleep(delay)
+
+    raise RuntimeError(_friendly_quota_message())
+
+
 app = FastAPI()
 
 app.add_middleware(
@@ -214,10 +284,14 @@ Run the workflow now. End with either:
             logger.info("turn start session_id=%s turn=%s", session_id, turn_number)
             
             # Send to Gemini with full conversation history
-            response = client.models.generate_content(
+            response = await _generate_content_with_retry(
+                client,
                 model=COMPUTER_USE_MODEL_ID,
                 contents=contents,
                 config=config,
+                websocket=websocket,
+                session_id=session_id,
+                turn_number=turn_number,
             )
             
             # Append model response to conversation history
@@ -454,12 +528,16 @@ Run the workflow now. End with either:
         logger.info("frontend_ws disconnected client_id=%s session_id=%s", client_id, session_id)
     except Exception as e:
         logger.exception("agent_loop_error client_id=%s session_id=%s", client_id, session_id)
+        error_message = str(e)
+        if _is_quota_or_rate_limit_error(e):
+            error_message = _friendly_quota_message()
         if "session_id" in locals() and session_id in session_meta:
             session_meta[session_id]["status"] = "failed"
-            session_meta[session_id]["error"] = str(e)
+            session_meta[session_id]["error"] = error_message
+            session_meta[session_id]["bug_detected"] = False
         await websocket.send_json({
             "type": "error",
-            "content": str(e)
+            "content": error_message
         })
 
 @app.get("/")
