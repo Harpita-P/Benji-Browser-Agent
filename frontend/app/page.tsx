@@ -69,6 +69,9 @@ export default function Home() {
   const [analysisPhase, setAnalysisPhase] = useState<string>("");
   const [analysisResult, setAnalysisResult] = useState<GitHubAnalysisResult | null>(null);
   const [showAgentThoughtLogs, setShowAgentThoughtLogs] = useState(false);
+  const rotatingTitles = ["Super Engineer", "Teammate"];
+  const [titleIndex, setTitleIndex] = useState(0);
+  const [titleVisible, setTitleVisible] = useState(true);
   const wsRef = useRef<WebSocket | null>(null);
   const logsEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
@@ -106,6 +109,21 @@ export default function Home() {
   useEffect(() => {
     scrollToBottom();
   }, [logs]);
+
+  useEffect(() => {
+    const switchInterval = setInterval(() => {
+      setTitleVisible(false);
+
+      const swapTimeout = setTimeout(() => {
+        setTitleIndex((prev) => (prev + 1) % rotatingTitles.length);
+        setTitleVisible(true);
+      }, 300);
+
+      return () => clearTimeout(swapTimeout);
+    }, 2400);
+
+    return () => clearInterval(switchInterval);
+  }, [rotatingTitles.length]);
 
   useEffect(() => {
     // Initialize Web Speech API
@@ -481,9 +499,8 @@ export default function Home() {
         {/* Top Banner */}
         <div className="bg-[#FF0000] text-white px-6 py-3 text-sm flex-shrink-0">
           <div className="max-w-7xl mx-auto flex items-center gap-2">
-            <span>▶</span>
-            <span>Try it out in Stageland! • Get started with the Gemini & Flash template</span>
-            <span className="ml-auto text-xs">Learn more →</span>
+            <span>Powered by Gemini Computer Use + Gemini Live + Cloud Run</span>
+            <span className="ml-auto text-xs">2026</span>
           </div>
         </div>
 
@@ -491,10 +508,12 @@ export default function Home() {
         <header className="bg-white border-b border-gray-200 px-6 py-4 flex-shrink-0">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-[#FF0000] rounded flex items-center justify-center text-white font-bold text-sm">
+              <div className="w-8 h-8 bg-[#FF0000] rounded-full flex items-center justify-center text-white font-bold text-sm">
                 B
               </div>
-              <span className="font-semibold text-lg">Benji Browser</span>
+              <span className="text-lg font-semibold tracking-[0.14em] uppercase" style={{fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"}}>
+                Benji
+              </span>
             </div>
             <div className="flex items-center gap-3">
               <button className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">
@@ -540,19 +559,36 @@ export default function Home() {
             {/* Main Heading */}
             <div className="text-center mb-24 max-w-5xl">
               <h1 className="text-7xl font-normal mb-6 tracking-tight" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
-                Benji is your AI Super Engineer
+                Benji is your AI{" "}
+                <span className={`inline-block transition-opacity duration-300 ${titleVisible ? "opacity-100" : "opacity-0"}`}>
+                  {rotatingTitles[titleIndex]}
+                </span>
               </h1>
               <div className="flex items-center justify-center gap-3 mb-6">
-                <span className="px-3 py-1.5 bg-purple-100 text-purple-700 rounded-md text-xs font-semibold uppercase tracking-wide">
-                  QA Guide
+                <span className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-md text-xs font-semibold">
+                  Gemini computer use
                 </span>
-                <p className="text-gray-600 text-xl font-light">
-                  Visual UI bugs are everywhere
+                <span className="px-3 py-1.5 bg-red-100 text-red-700 rounded-md text-xs font-semibold">
+                  GitHub ADK MCP
+                </span>
+              </div>
+              <div className="text-gray-700 text-lg max-w-4xl mx-auto font-light leading-relaxed text-justify bg-gray-100/20 border border-gray-200/40 backdrop-blur-md rounded-2xl px-6 py-5 md:px-8 md:py-7 shadow-sm">
+                <p className="text-center font-medium text-gray-800">
+                  What if you could test your app with an AI teammate who can actually use it?
+                </p>
+                <p className="mt-4">
+                  <span className="inline-flex items-center gap-2 mr-1 align-middle">
+                    <Code size={18} className="text-[#FF0000]" />
+                  </span>
+                  <span className="font-semibold">Talk to bENJI.</span> - a <span className="font-semibold">live multimodal engineer</span> with <span className="font-semibold">advanced screen understanding</span> who navigates your UI like a real user, runs precise end to end workflows, and catches the bugs that slip through.
+                </p>
+                <p className="mt-3">
+                  <span className="inline-flex items-center gap-2 mr-1 align-middle">
+                    <TrendingUp size={18} className="text-[#FF0000]" />
+                  </span>
+                  Benji also <span className="font-semibold">writes the code to fix them</span>, so you <span className="font-semibold">ship faster</span> and build a better app people genuinely love using!
                 </p>
               </div>
-              <p className="text-gray-500 text-base max-w-2xl mx-auto font-light">
-                Common visual defects that slip through code review
-              </p>
             </div>
 
             {/* Benji Browser Input Box - Full Width */}
