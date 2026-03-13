@@ -44,11 +44,15 @@ const extractIssueFromAnalysis = (analysisText: string): string => {
   return "a workflow bug identified from the QA session logs";
 };
 
+const sanitizeBaseUrl = (url: string): string => url.replace(/\/+$/, "");
+
 export default function Home() {
+  const backendHttpBase = sanitizeBaseUrl(process.env.NEXT_PUBLIC_BACKEND_HTTP_URL || "http://localhost:8080");
+  const backendWsBase = sanitizeBaseUrl(process.env.NEXT_PUBLIC_BACKEND_WS_URL || "ws://localhost:8080");
   const [prompt, setPrompt] = useState("");
   const [appUrl, setAppUrl] = useState("");
-  const [repoOwner, setRepoOwner] = useState("pitadeveloper");
-  const [repoName, setRepoName] = useState("Benji-Test");
+  const [repoOwner, setRepoOwner] = useState("");
+  const [repoName, setRepoName] = useState("");
   const [isRunning, setIsRunning] = useState(false);
   const [screenshot, setScreenshot] = useState<string | null>(null);
   const [logs, setLogs] = useState<Array<{ type: string; content: string; timestamp: Date; stepNumber?: number; stepTitle?: string; functionName?: string }>>([]);
@@ -248,7 +252,7 @@ export default function Home() {
     setTurnNumber(0);
     setSessionStartTime(new Date());
 
-    const ws = new WebSocket("ws://localhost:8080/ws");
+    const ws = new WebSocket(`${backendWsBase}/ws`);
     wsRef.current = ws;
 
     ws.onopen = () => {
@@ -387,7 +391,7 @@ export default function Home() {
 
     try {
       setAnalysisPhase("Sending session logs to GitHub agent...");
-      const response = await fetch("http://localhost:8080/analyze-bugs", {
+      const response = await fetch(`${backendHttpBase}/analyze-bugs`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -572,27 +576,29 @@ export default function Home() {
                 {/* Repository Inputs */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
+                    <label htmlFor="github-owner" className="block text-sm font-medium text-gray-700 mb-2" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
                       GitHub Owner:
                     </label>
                     <input
+                      id="github-owner"
+                      title="GitHub Owner"
                       type="text"
                       value={repoOwner}
                       onChange={(e) => setRepoOwner(e.target.value)}
-                      placeholder="pitadeveloper"
                       className="w-full px-4 py-3 text-base border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FF0000] focus:border-transparent"
                       style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
+                    <label htmlFor="github-repository" className="block text-sm font-medium text-gray-700 mb-2" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
                       Repository:
                     </label>
                     <input
+                      id="github-repository"
+                      title="Repository"
                       type="text"
                       value={repoName}
                       onChange={(e) => setRepoName(e.target.value)}
-                      placeholder="Benji-Test"
                       className="w-full px-4 py-3 text-base border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FF0000] focus:border-transparent"
                       style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}
                     />

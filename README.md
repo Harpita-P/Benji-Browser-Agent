@@ -2,9 +2,16 @@
 
 A modern Next.js frontend for the Gemini computer-use browser agent with real-time WebSocket communication.
 
+## Start Here
+
+- Quick run guide: `docs/RUN_REPO_QUICKSTART.md`
+- Cloud architecture + deployment: `docs/README_CLOUD_ARCHITECTURE.md`
+
+If you are using the deployed backend, follow `docs/RUN_REPO_QUICKSTART.md` first.
+
 ## Architecture
 
-- **Backend**: FastAPI server with WebSocket support (`/backend`)
+- **Backend**: FastAPI server with WebSocket support (`/cloud_backend`)
 - **Frontend**: Next.js 14 with TypeScript and Tailwind CSS (`/frontend`)
 - **Communication**: Real-time WebSocket for live updates
 
@@ -43,7 +50,7 @@ A modern Next.js frontend for the Gemini computer-use browser agent with real-ti
 
 1. **Navigate to backend directory**
    ```bash
-   cd backend
+   cd cloud_backend
    ```
 
 2. **Create and activate virtual environment**
@@ -70,10 +77,10 @@ A modern Next.js frontend for the Gemini computer-use browser agent with real-ti
 
 6. **Run the backend server**
    ```bash
-   uvicorn main:app --reload --port 8000
+   uvicorn main:app --reload --port 8080
    ```
 
-   The backend will be available at `http://localhost:8000`
+   The backend will be available at `http://localhost:8080`
 
 ### Frontend Setup
 
@@ -96,7 +103,7 @@ A modern Next.js frontend for the Gemini computer-use browser agent with real-ti
 
 ## Usage
 
-1. **Start both servers** (backend on port 8000, frontend on port 3000)
+1. **Start both servers** (backend on port 8080, frontend on port 3000)
 
 2. **Open the UI** at `http://localhost:3000`
 
@@ -118,9 +125,14 @@ A modern Next.js frontend for the Gemini computer-use browser agent with real-ti
 
 ```
 Web-Dojo/
-├── backend/
+├── cloud_backend/
 │   ├── main.py              # FastAPI server with WebSocket
 │   └── requirements.txt     # Python dependencies
+├── docs/
+│   ├── RUN_REPO_QUICKSTART.md
+│   ├── README_CLOUD_ARCHITECTURE.md
+│   ├── ARCHITECTURE_REVIEW.md
+│   └── GITHUB_AGENT_WORKFLOW.md
 ├── frontend/
 │   ├── app/
 │   │   ├── page.tsx        # Main UI component
@@ -149,14 +161,14 @@ The backend sends these message types to the frontend:
 
 ### Change Browser Viewport
 
-Edit `backend/main.py`:
+Edit `cloud_backend/main.py`:
 ```python
 sw, sh = 1440, 1000  # Change width and height
 ```
 
 ### Modify Max Turns
 
-Edit the `run_agent_for_task` call in `backend/main.py`:
+Edit the run loop in `cloud_backend/main.py`:
 ```python
 await run_agent_for_task(page, client, prompt, sw, sh, websocket, max_turns=30)
 ```
@@ -173,8 +185,8 @@ Edit `frontend/app/globals.css` to change the color scheme.
 - Verify Playwright is installed: `playwright install chromium`
 
 ### Frontend can't connect
-- Ensure backend is running on port 8000
-- Check CORS settings in `backend/main.py` if using different ports
+- Ensure backend is running on port 8080
+- Check CORS settings in `cloud_backend/main.py` if using different ports
 - Verify WebSocket connection in browser console
 
 ### No screenshots appearing
@@ -186,9 +198,9 @@ Edit `frontend/app/globals.css` to change the color scheme.
 
 ### Backend Development
 ```bash
-cd backend
+cd cloud_backend
 source venv/bin/activate
-uvicorn main:app --reload --port 8000
+uvicorn main:app --reload --port 8080
 ```
 
 ### Frontend Development

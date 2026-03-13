@@ -10,10 +10,26 @@ from typing import Dict, Optional
 import os
 import json
 import asyncio
+import logging
 from dotenv import load_dotenv
 from github_agent import create_github_agent
 
 load_dotenv()
+
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+logging.basicConfig(
+    level=getattr(logging, LOG_LEVEL, logging.INFO),
+    format="%(levelname)s %(asctime)s %(message)s",
+)
+logger = logging.getLogger("benji.cloud_backend")
+
+
+def _clip_text(value: str, limit: int = 320) -> str:
+    text = " ".join(str(value).split())
+    if len(text) <= limit:
+        return text
+    return f"{text[:limit]}..."
+
 
 app = FastAPI()
 
@@ -35,7 +51,7 @@ session_meta: Dict[str, Dict] = {}  # session_id -> metadata for run outcome and
 
 # Gemini configuration - Computer Use model
 COMPUTER_USE_MODEL_ID = os.getenv("COMPUTER_USE_MODEL_ID", "gemini-2.5-computer-use-preview-10-2025")
-print(f"🔧 Using model: {COMPUTER_USE_MODEL_ID}")
+logger.info("startup model=%s", COMPUTER_USE_MODEL_ID)
 
 QA_WORKFLOW_SYSTEM_PROMPT = """
 You are a QA Engineer agent testing visual UI workflows in the application.
@@ -72,6 +88,7 @@ async def playwright_endpoint(websocket: WebSocket):
     """Endpoint for local Playwright client to connect"""
     await websocket.accept()
     client_id = "default"
+    logger.info("playwright_ws accepted")
     
     try:
         # Receive client registration
@@ -79,7 +96,7 @@ async def playwright_endpoint(websocket: WebSocket):
         client_id = data.get("client_id", "default")
         playwright_clients[client_id] = websocket
         
-        print(f"Playwright client connected: {client_id}")
+        logger.info("playwright_ws connected client_id=%s active_clients=%s", client_id, len(playwright_clients))
         
         # Keep connection alive without calling receive
         # The /ws endpoint will handle all communication with this WebSocket
@@ -93,18 +110,22 @@ async def playwright_endpoint(websocket: WebSocket):
     finally:
         if client_id in playwright_clients:
             del playwright_clients[client_id]
-        print(f"Playwright client disconnected: {client_id}")
+        logger.info("playwright_ws disconnected client_id=%s active_clients=%s", client_id, len(playwright_clients))
 
 @app.websocket("/ws")
 async def frontend_endpoint(websocket: WebSocket):
     """Endpoint for frontend to connect and start agent"""
     await websocket.accept()
+    client_id = "default"
+    session_id = None
+    logger.info("frontend_ws accepted")
     
     try:
         # Receive initial prompt
         data = await websocket.receive_json()
         prompt = data["prompt"]
         client_id = data.get("client_id", "default")
+        logger.info("frontend_ws start client_id=%s prompt=%s", client_id, _clip_text(prompt, 180))
         
         frontend_clients[client_id] = websocket
         
@@ -116,6 +137,7 @@ async def frontend_endpoint(websocket: WebSocket):
             waited += 0.5
         
         if client_id not in playwright_clients:
+            logger.warning("frontend_ws missing_playwright_client client_id=%s waited_seconds=%s", client_id, max_wait)
             await websocket.send_json({
                 "type": "error",
                 "content": "Local Playwright client not connected. Please start the local client first."
@@ -144,6 +166,7 @@ async def frontend_endpoint(websocket: WebSocket):
             "bug_detected": False,
             "client_id": client_id,
         }
+        logger.info("session started session_id=%s client_id=%s", session_id, client_id)
         
         # Log initial prompt
         session_logs[session_id].append({
@@ -188,7 +211,7 @@ Run the workflow now. End with either:
         
         while turn_number < max_turns:
             turn_number += 1
-            print(f"\n--- Turn {turn_number} ---")
+            logger.info("turn start session_id=%s turn=%s", session_id, turn_number)
             
             # Send to Gemini with full conversation history
             response = client.models.generate_content(
@@ -210,6 +233,12 @@ Run the workflow now. End with either:
             
             if thoughts:
                 thinking_content = " ".join(thoughts)
+                logger.info(
+                    "turn thinking session_id=%s turn=%s content=%s",
+                    session_id,
+                    turn_number,
+                    _clip_text(thinking_content),
+                )
                 await websocket.send_json({
                     "type": "thinking",
                     "content": thinking_content
@@ -240,6 +269,12 @@ Run the workflow now. End with either:
             
             if not function_calls:
                 current_status = session_meta[session_id]["status"]
+                logger.info(
+                    "turn no_actions session_id=%s turn=%s status=%s",
+                    session_id,
+                    turn_number,
+                    current_status,
+                )
                 if current_status in {"passed", "failed"}:
                     await websocket.send_json({
                         "type": "status",
@@ -273,6 +308,13 @@ Run the workflow now. End with either:
             function_responses = []
             
             for function_call in function_calls:
+                logger.info(
+                    "turn action session_id=%s turn=%s function=%s args=%s",
+                    session_id,
+                    turn_number,
+                    function_call.name,
+                    _clip_text(json.dumps(dict(function_call.args), ensure_ascii=True), 220),
+                )
                 # Log action
                 session_logs[session_id].append({
                     "type": "action",
@@ -298,6 +340,22 @@ Run the workflow now. End with either:
                 
                 # Wait for execution result
                 result = await playwright_ws.receive_json()
+                if result.get("error"):
+                    logger.warning(
+                        "turn action_result_error session_id=%s turn=%s function=%s error=%s",
+                        session_id,
+                        turn_number,
+                        function_call.name,
+                        _clip_text(str(result.get("error")), 220),
+                    )
+                else:
+                    logger.info(
+                        "turn action_result_ok session_id=%s turn=%s function=%s url=%s",
+                        session_id,
+                        turn_number,
+                        function_call.name,
+                        _clip_text(str(result.get("url", "")), 180),
+                    )
                 
                 # Get new screenshot after action
                 screenshot_base64 = result.get("screenshot", "")
@@ -370,6 +428,13 @@ Run the workflow now. End with either:
             if final_status == "passed"
             else f"TEST FAILED - BUG DETECTED. Reason: {failure_reason}"
         )
+        logger.info(
+            "session complete session_id=%s status=%s turns=%s message=%s",
+            session_id,
+            final_status,
+            turn_number,
+            _clip_text(final_message),
+        )
 
         session_logs[session_id].append({
             "type": "complete",
@@ -386,9 +451,9 @@ Run the workflow now. End with either:
     except WebSocketDisconnect:
         if client_id in frontend_clients:
             del frontend_clients[client_id]
-        print(f"Frontend client disconnected: {client_id}")
+        logger.info("frontend_ws disconnected client_id=%s session_id=%s", client_id, session_id)
     except Exception as e:
-        print(f"Error in agent loop: {e}")
+        logger.exception("agent_loop_error client_id=%s session_id=%s", client_id, session_id)
         if "session_id" in locals() and session_id in session_meta:
             session_meta[session_id]["status"] = "failed"
             session_meta[session_id]["error"] = str(e)
@@ -412,6 +477,12 @@ async def analyze_bugs(request: BugAnalysisRequest):
     """
     Analyze session logs and suggest code fixes using GitHub MCP agent.
     """
+    logger.info(
+        "analyze_bugs requested session_id=%s repo=%s/%s",
+        request.session_id,
+        request.repo_owner,
+        request.repo_name,
+    )
     # Get session logs
     if request.session_id not in session_logs:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -439,10 +510,16 @@ async def analyze_bugs(request: BugAnalysisRequest):
             repo_name=request.repo_name,
             app_url=request.app_url
         )
+        logger.info(
+            "analyze_bugs completed session_id=%s status=%s",
+            request.session_id,
+            result.get("status", "unknown"),
+        )
         
         return result
     
     except Exception as e:
+        logger.exception("analyze_bugs_error session_id=%s", request.session_id)
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
 @app.get("/sessions")

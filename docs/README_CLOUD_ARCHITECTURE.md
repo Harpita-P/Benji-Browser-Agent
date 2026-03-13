@@ -36,86 +36,51 @@ Benji now uses a **hybrid cloud architecture**:
 
 ## Setup Instructions
 
-### 1. Deploy Cloud Run Backend
+### 1. Deployed Backend (Current)
+
+Cloud Run service is live:
+- Service name: `benji-multiagent-backend`
+- URL: `https://benji-multiagent-backend-2lw4x3ccbq-uc.a.run.app`
+- Playwright socket: `wss://benji-multiagent-backend-2lw4x3ccbq-uc.a.run.app/playwright`
+
+### 2. Deploy Again (When Needed)
 
 ```bash
 cd cloud_backend
-
-# Copy environment variables
-cp .env.example .env
-# Edit .env with your Google API key
-
-# Deploy to Cloud Run
 chmod +x deploy.sh
+
+PROJECT_ID="your-gcp-project" \
+GOOGLE_API_KEY="your-google-api-key" \
+GITHUB_TOKEN="your-github-token" \
 ./deploy.sh
 ```
 
-You'll get a URL like: `https://benji-agent-xyz.run.app`
-
-### 2. Start Local Playwright Client
+### 3. Start Local Playwright Client
 
 ```bash
 cd local_client
-
-# Install dependencies
 pip install -r requirements.txt
 playwright install chromium
 
-# Update CLOUD_RUN_URL in playwright_client.py with your Cloud Run URL
-# For local testing: ws://localhost:8080
-# For production: wss://benji-agent-xyz.run.app
-
-# Run the client
-python playwright_client.py
+CLOUD_RUN_URL="wss://benji-multiagent-backend-2lw4x3ccbq-uc.a.run.app" python playwright_client.py
 ```
 
-You should see:
-```
-🚀 Starting local Playwright client...
-📡 Connecting to Cloud Run agent at: wss://benji-agent-xyz.run.app
-✅ Browser launched
-✅ Connected to agent brain
-📝 Registered as client: default
-🎯 Ready to receive commands from agent brain
-```
+### 4. Start Frontend Against Cloud Run
 
-### 3. Update Frontend
-
-In `frontend/app/page.tsx`, update the WebSocket URL:
-
-```typescript
-// For local testing
-const ws = new WebSocket("ws://localhost:8080/ws");
-
-// For production
-const ws = new WebSocket("wss://benji-agent-xyz.run.app/ws");
-```
-
-Add client_id to the initial message:
-
-```typescript
-ws.send(JSON.stringify({ 
-  prompt: fullPrompt,
-  client_id: "default"  // Match the CLIENT_ID in playwright_client.py
-}));
-```
-
-### 4. Run the Full Stack
-
-**Terminal 1 - Local Playwright Client:**
-```bash
-cd local_client
-python playwright_client.py
-```
-
-**Terminal 2 - Frontend:**
 ```bash
 cd frontend
+npm install
+
+NEXT_PUBLIC_BACKEND_HTTP_URL="https://benji-multiagent-backend-2lw4x3ccbq-uc.a.run.app" \
+NEXT_PUBLIC_BACKEND_WS_URL="wss://benji-multiagent-backend-2lw4x3ccbq-uc.a.run.app" \
 npm run dev
 ```
 
-**Cloud Run Backend:**
-Already running at your deployed URL!
+### 5. Run the Full Stack
+
+- Terminal 1: local Playwright client (`local_client/playwright_client.py`)
+- Terminal 2: frontend (`frontend`, `npm run dev`)
+- Cloud Run backend is already hosted and should remain running
 
 ## How It Works
 
@@ -170,14 +135,19 @@ npm run dev
 ```
 GOOGLE_API_KEY=your_api_key
 GOOGLE_CLOUD_PROJECT=your_project_id
-GOOGLE_LOCATION=us-central1
-MODEL_ID=gemini-2.0-flash-exp
+GOOGLE_LOCATION=global
+COMPUTER_USE_MODEL_ID=gemini-2.5-computer-use-preview-10-2025
+GITHUB_TOKEN=your_github_token
+GITHUB_ADK_MCP_MODEL_NAME=gemini-2.5-pro
+GITHUB_MCP_URL=https://api.githubcopilot.com/mcp/
+GITHUB_MCP_TOOLSETS=context,repos,issues,labels,pull_requests,actions,users,orgs
+GITHUB_MCP_READONLY=false
 ```
 
 ### Local Playwright Client
-Update `CLOUD_RUN_URL` in `playwright_client.py`:
+Set `CLOUD_RUN_URL` when launching `playwright_client.py`:
 - Local: `ws://localhost:8080`
-- Production: `wss://your-app.run.app`
+- Production: `wss://benji-multiagent-backend-2lw4x3ccbq-uc.a.run.app`
 
 ## Troubleshooting
 

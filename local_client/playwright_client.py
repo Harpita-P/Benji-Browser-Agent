@@ -8,9 +8,10 @@ import json
 from playwright.async_api import async_playwright
 import base64
 import sys
+import os
 
 # Cloud Run backend URL (change this to your deployed URL)
-CLOUD_RUN_URL = "ws://localhost:8080"  # Change to wss://your-app.run.app in production
+CLOUD_RUN_URL = os.getenv("CLOUD_RUN_URL", "ws://localhost:8080")
 
 CLIENT_ID = "default"  # Can be customized per machine
 
