@@ -572,15 +572,17 @@ export default function Home() {
                   GitHub ADK MCP
                 </span>
               </div>
-              <div className="text-gray-700 text-lg max-w-4xl mx-auto font-light leading-relaxed text-justify bg-gray-100/20 border border-gray-200/40 backdrop-blur-md rounded-2xl px-6 py-5 md:px-8 md:py-7 shadow-sm">
-                <p className="text-center font-medium text-gray-800">
-                  What if you could test your app with an AI teammate who can actually use it?
+              <div className="text-gray-700 text-lg max-w-4xl mx-auto font-light leading-relaxed text-justify bg-gray-500/5 border border-gray-300/20 backdrop-blur-md rounded-2xl px-6 py-5 md:px-8 md:py-7 shadow-sm">
+                <p className="text-center text-xl md:text-2xl font-bold text-gray-800">
+                  What if you could test your app with an AI teammate
+                  <br />
+                  who can actually use it?
                 </p>
                 <p className="mt-4">
                   <span className="inline-flex items-center gap-2 mr-1 align-middle">
                     <Code size={18} className="text-[#FF0000]" />
                   </span>
-                  <span className="font-semibold">Talk to bENJI.</span> - a <span className="font-semibold">live multimodal engineer</span> with <span className="font-semibold">advanced screen understanding</span> who navigates your UI like a real user, runs precise end to end workflows, and catches the bugs that slip through.
+                  <span className="font-semibold">Talk to Benji.</span> - a <span className="font-semibold">live multimodal engineer</span> with <span className="font-semibold">advanced screen understanding</span> who navigates your UI like a real user, runs precise end to end workflows, and catches the bugs that slip through.
                 </p>
                 <p className="mt-3">
                   <span className="inline-flex items-center gap-2 mr-1 align-middle">
