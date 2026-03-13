@@ -20,6 +20,8 @@ interface GitHubAnalysisResult {
   branch?: string;
   commit?: string;
   prUrl?: string;
+  prNumber?: string;
+  prCreated?: boolean;
   error?: string;
 }
 
@@ -29,6 +31,17 @@ const splitReasonFromText = (text: string): { summaryText: string; reasonText?: 
     summaryText: reasonMatch ? text.replace(/\s*Reason:\s*.+$/i, "").trim() : text,
     reasonText: reasonMatch?.[1]?.trim(),
   };
+};
+
+const extractIssueFromAnalysis = (analysisText: string): string => {
+  const normalized = analysisText.replace(/\s+/g, " ").trim();
+  const rootCauseMatch = normalized.match(/root cause[^.]*\./i);
+  if (rootCauseMatch?.[0]) return rootCauseMatch[0];
+
+  const bugMatch = normalized.match(/bug[^.]*\./i);
+  if (bugMatch?.[0]) return bugMatch[0];
+
+  return "a workflow bug identified from the QA session logs";
 };
 
 export default function Home() {
@@ -51,6 +64,7 @@ export default function Home() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisPhase, setAnalysisPhase] = useState<string>("");
   const [analysisResult, setAnalysisResult] = useState<GitHubAnalysisResult | null>(null);
+  const [showAgentThoughtLogs, setShowAgentThoughtLogs] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const logsEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
@@ -61,14 +75,22 @@ export default function Home() {
     const commitMatch = analysisText.match(/Commit:\s*([^\n]+)/i);
     const prLineMatch = analysisText.match(/PR:\s*(https?:\/\/[^\s\n]+)/i);
     const prUrlMatch = analysisText.match(/https:\/\/github\.com\/[^\s\n]+\/pull\/\d+/i);
+    const prNumberMatch = analysisText.match(/PR\s*#\s*(\d+)/i);
+    const commitHashMatch = analysisText.match(/\b[0-9a-f]{40}\b/i) || analysisText.match(/\b[0-9a-f]{7,40}\b/i);
+    const derivedPrUrl = prNumberMatch?.[1]
+      ? `https://github.com/${repoOwner.trim()}/${repoName.trim()}/pull/${prNumberMatch[1]}`
+      : undefined;
+    const resolvedPrUrl = prLineMatch?.[1]?.trim() || prUrlMatch?.[0] || derivedPrUrl;
 
     return {
       status: result?.status || "unknown",
       analysis: analysisText || "No analysis returned",
       agent_response: result?.agent_response,
       branch: branchMatch?.[1]?.trim(),
-      commit: commitMatch?.[1]?.trim(),
-      prUrl: prLineMatch?.[1]?.trim() || prUrlMatch?.[0],
+      commit: commitMatch?.[1]?.trim() || commitHashMatch?.[0],
+      prUrl: resolvedPrUrl,
+      prNumber: prNumberMatch?.[1],
+      prCreated: Boolean(resolvedPrUrl || prNumberMatch?.[1]),
       error: result?.error,
     };
   };
@@ -361,6 +383,7 @@ export default function Home() {
     setIsAnalyzing(true);
     setAnalysisResult(null);
     setAnalysisPhase("Starting GitHub MCP analysis...");
+    setShowAgentThoughtLogs(false);
 
     try {
       setAnalysisPhase("Sending session logs to GitHub agent...");
@@ -861,11 +884,11 @@ export default function Home() {
           </div>
 
           {(isAnalyzing || analysisResult) && (
-            <div className="border-t border-gray-200 bg-gray-50 px-4 py-3 flex-shrink-0">
+            <div className="border-t-2 border-red-300 bg-red-50 px-4 py-3 flex-shrink-0">
               <div className="flex items-center gap-2 mb-2">
-                <Code className="w-4 h-4 text-purple-600" />
-                <span className="text-sm font-medium text-gray-800">GitHub Agent Analysis</span>
-                {isAnalyzing && <Loader2 className="w-4 h-4 animate-spin text-purple-600" />}
+                <Code className="w-4 h-4 text-red-700" />
+                <span className="text-sm font-semibold text-red-800">GitHub Agent Analysis</span>
+                {isAnalyzing && <Loader2 className="w-4 h-4 animate-spin text-red-700" />}
               </div>
 
               {isAnalyzing && (
@@ -876,6 +899,13 @@ export default function Home() {
 
               {analysisResult && (
                 <div className="space-y-2 text-sm">
+                  {analysisResult.prCreated && (
+                    <div className="rounded-lg border-2 border-green-300 bg-green-50 p-3">
+                      <div className="text-base font-semibold text-green-800">✅ Pull Request Created</div>
+                      <div className="text-xs text-green-700 mt-1">GitHub MCP workflow completed branch/commit/PR steps.</div>
+                    </div>
+                  )}
+
                   <div className="flex items-center gap-2">
                     <span className="text-gray-600">Status:</span>
                     <span
@@ -899,22 +929,24 @@ export default function Home() {
                   )}
 
                   {analysisResult.commit && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-600">Commit:</span>
-                      <code className="px-2 py-0.5 bg-gray-100 border border-gray-200 rounded text-xs">
+                    <div className="rounded-md border border-indigo-200 bg-indigo-50 p-2">
+                      <div className="text-xs font-semibold text-indigo-700 mb-1">Commit</div>
+                      <code className="px-2 py-1 bg-white border border-indigo-200 rounded text-xs break-all block">
                         {analysisResult.commit}
                       </code>
                     </div>
                   )}
 
                   {analysisResult.prUrl && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-600">PR:</span>
+                    <div className="rounded-md border border-blue-200 bg-blue-50 p-2">
+                      <div className="text-xs font-semibold text-blue-700 mb-1">
+                        Pull Request {analysisResult.prNumber ? `#${analysisResult.prNumber}` : ""}
+                      </div>
                       <a
                         href={analysisResult.prUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-700 underline break-all"
+                        className="text-blue-700 hover:text-blue-800 underline break-all text-sm font-medium"
                       >
                         {analysisResult.prUrl}
                       </a>
@@ -930,12 +962,34 @@ export default function Home() {
                   {analysisResult.analysis &&
                     (() => {
                       const { summaryText, reasonText } = splitReasonFromText(analysisResult.analysis);
+                      const issueSummary = extractIssueFromAnalysis(summaryText);
+                      const benjiSummary = analysisResult.prCreated
+                        ? `Great — I found the issue and successfully created a pull request. The root issue was ${issueSummary} I implemented the fix, pushed it to branch ${analysisResult.branch ? `"${analysisResult.branch}"` : "for this change"}, and opened ${analysisResult.prUrl ? `PR ${analysisResult.prUrl}` : "a pull request"}${analysisResult.commit ? ` with commit ${analysisResult.commit}.` : "."}`
+                        : `I reviewed the logs and found the issue. The root issue was ${issueSummary} I prepared the analysis and next fix steps, but a pull request has not been confirmed yet.`;
+
                       return (
-                        <div className="max-h-40 overflow-y-auto bg-white border border-gray-200 rounded p-2 text-xs text-gray-700 whitespace-pre-wrap">
-                          <div>{summaryText}</div>
+                        <div className="space-y-2">
+                          <div className="bg-white border border-gray-200 rounded p-3 text-sm text-gray-800">
+                            {benjiSummary}
+                          </div>
+
                           {reasonText && (
-                            <div className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs text-amber-800 whitespace-normal">
+                            <div className="rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs text-amber-800 whitespace-normal">
                               <span className="font-semibold">Reason:</span> {reasonText}
+                            </div>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => setShowAgentThoughtLogs((prev) => !prev)}
+                            className="text-xs px-2 py-1 rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-100"
+                          >
+                            {showAgentThoughtLogs ? "Hide Agent Thought Logs" : "Show Agent Thought Logs"}
+                          </button>
+
+                          {showAgentThoughtLogs && (
+                            <div className="max-h-40 overflow-y-auto bg-white border border-gray-200 rounded p-2 text-xs text-gray-700 whitespace-pre-wrap">
+                              {summaryText}
                             </div>
                           )}
                         </div>

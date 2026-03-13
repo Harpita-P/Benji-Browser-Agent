@@ -15,6 +15,55 @@ APP_NAME = "benji_github_mcp_app"
 GITHUB_ADK_MCP_MODEL_NAME = os.getenv("GITHUB_ADK_MCP_MODEL_NAME", "gemini-2.5-pro") or "gemini-2.5-pro"
 GITHUB_MCP_URL = os.getenv("GITHUB_MCP_URL", "https://api.githubcopilot.com/mcp/")
 DEFAULT_TOOLSETS = "context,repos,issues,labels,pull_requests,actions,users,orgs"
+ALLOWED_GITHUB_TOOLS = [
+    "actions_get",
+    "actions_list",
+    "actions_run_trigger",
+    "add_comment_to_pending_review",
+    "add_issue_comment",
+    "add_reply_to_pull_request_comment",
+    "create_branch",
+    "create_or_update_file",
+    "create_pull_request",
+    "create_repository",
+    "delete_file",
+    "fork_repository",
+    "get_commit",
+    "get_file_contents",
+    "get_job_logs",
+    "get_label",
+    "get_latest_release",
+    "get_me",
+    "get_release_by_tag",
+    "get_tag",
+    "get_team_members",
+    "get_teams",
+    "issue_read",
+    "issue_write",
+    "label_write",
+    "list_branches",
+    "list_commits",
+    "list_issue_types",
+    "list_issues",
+    "list_label",
+    "list_pull_requests",
+    "list_releases",
+    "list_tags",
+    "merge_pull_request",
+    "pull_request_read",
+    "pull_request_review_write",
+    "push_files",
+    "search_code",
+    "search_issues",
+    "search_orgs",
+    "search_pull_requests",
+    "search_repositories",
+    "search_users",
+    "sub_issue_write",
+    "update_pull_request",
+    "update_pull_request_branch",
+]
+ALLOWED_GITHUB_TOOLS_TEXT = ", ".join(ALLOWED_GITHUB_TOOLS)
 AGENT_INSTRUCTION = """
 You are a GitHub engineering agent focused on UI/workflow bug reports.
 
@@ -32,6 +81,9 @@ Behavior rules:
 - If repo or file identity is missing, ask for owner/repo and exact scope once.
 - If blocked by permissions/tool limitations, report blockers clearly and stop.
 - If write actions are allowed, do not stop at analysis; complete the branch/commit/PR workflow.
+- MCP tool-calling constraint: only call tools from this allowlist:
+  {allowed_tools}
+- Never invent tool names. Never call null_tool.
 
 Pull request quality requirements (mandatory):
 - PR title must be concise and fix-focused (example: "Fix: add medium priority option for tasks").
@@ -67,7 +119,7 @@ When you finish, ALWAYS return this structured summary:
   - Commit: <commit-sha>
   - PR: <pull-request-url>
 - Validation: tests/checks run, or what could not be run
-""".strip()
+""".format(allowed_tools=ALLOWED_GITHUB_TOOLS_TEXT).strip()
 
 
 def _build_toolset(github_token: str) -> McpToolset:
@@ -106,6 +158,34 @@ class GitHubCodeFixingAgent:
             session_service=self.session_service,
         )
 
+    async def _run_agent_with_prompt(self, prompt: str) -> str:
+        session = await self.session_service.create_session(
+            state={},
+            app_name=APP_NAME,
+            user_id=f"benji-{uuid.uuid4()}",
+        )
+
+        content = types.Content(role="user", parts=[types.Part(text=prompt)])
+        events = self.runner.run_async(
+            session_id=session.id,
+            user_id=session.user_id,
+            new_message=content,
+        )
+
+        final_text_parts: List[str] = []
+        async for event in events:
+            content_obj = getattr(event, "content", None)
+            if not content_obj:
+                continue
+
+            parts = getattr(content_obj, "parts", None) or []
+            for part in parts:
+                text = getattr(part, "text", None)
+                if text:
+                    final_text_parts.append(text)
+
+        return "\n".join(final_text_parts).strip()
+
     async def analyze_and_fix(
         self,
         session_logs: List[Dict],
@@ -131,38 +211,32 @@ IMPORTANT:
 FULL SESSION LOGS (RAW JSON):
 {full_logs_json}
 """.strip()
-
-        session = await self.session_service.create_session(
-            state={},
-            app_name=APP_NAME,
-            user_id=f"benji-{uuid.uuid4()}",
-        )
-
-        content = types.Content(role="user", parts=[types.Part(text=prompt)])
-        events = self.runner.run_async(
-            session_id=session.id,
-            user_id=session.user_id,
-            new_message=content,
-        )
-
-        final_text_parts: List[str] = []
         try:
-            async for event in events:
-                content_obj = getattr(event, "content", None)
-                if not content_obj:
-                    continue
+            final_text = await self._run_agent_with_prompt(prompt)
+        except Exception as first_error:
+            error_text = str(first_error)
+            if "null_tool" in error_text or "Tool '" in error_text and "not found" in error_text:
+                retry_prompt = (
+                    prompt
+                    + "\n\nRETRY INSTRUCTION (MANDATORY):\n"
+                    + f"- Previous attempt failed due to invalid tool call.\n- Use ONLY these tool names: {ALLOWED_GITHUB_TOOLS_TEXT}\n"
+                    + "- Never call null_tool.\n"
+                )
+                try:
+                    final_text = await self._run_agent_with_prompt(retry_prompt)
+                except Exception as retry_error:
+                    return {
+                        "status": "failed",
+                        "analysis": f"GitHub MCP retry failed after invalid tool call. First error: {first_error}. Retry error: {retry_error}",
+                        "agent_response": "",
+                    }
+            else:
+                return {
+                    "status": "failed",
+                    "analysis": f"GitHub MCP analysis failed: {first_error}",
+                    "agent_response": "",
+                }
 
-                parts = getattr(content_obj, "parts", None) or []
-                for part in parts:
-                    text = getattr(part, "text", None)
-                    if text:
-                        final_text_parts.append(text)
-        finally:
-            aclose = getattr(events, "aclose", None)
-            if callable(aclose):
-                await aclose()
-
-        final_text = "\n".join(final_text_parts).strip()
         return {
             "status": "success" if final_text else "failed",
             "analysis": final_text or "No response",
