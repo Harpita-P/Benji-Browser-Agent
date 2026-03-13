@@ -516,11 +516,8 @@ export default function Home() {
               </span>
             </div>
             <div className="flex items-center gap-3">
-              <button className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">
-                Deploy
-              </button>
               <button className="px-4 py-2 text-sm bg-black text-white rounded-lg hover:bg-gray-800">
-                GitHub
+                Get Started on Github <span className="text-xs">&gt;</span>
               </button>
             </div>
           </div>
@@ -572,23 +569,27 @@ export default function Home() {
                   GitHub ADK MCP
                 </span>
               </div>
-              <div className="text-gray-700 text-lg max-w-4xl mx-auto font-light leading-relaxed text-justify bg-gray-500/5 border border-gray-300/20 backdrop-blur-md rounded-2xl px-6 py-5 md:px-8 md:py-7 shadow-sm">
-                <p className="text-center text-xl md:text-2xl font-bold text-violet-700">
+              <div className="text-gray-700 text-lg max-w-4xl mx-auto font-light leading-relaxed text-justify bg-gray-800/8 border border-gray-600/25 backdrop-blur-md rounded-2xl px-6 py-5 md:px-8 md:py-7 shadow-sm">
+                <p className="text-center text-xl md:text-2xl font-bold text-violet-400">
                   What if you could test your app with an AI teammate
                   <br />
                   who can actually use it?
                 </p>
-                <p className="mt-4">
-                  <span className="inline-flex items-center gap-2 mr-1 align-middle">
-                    <Code size={18} className="text-[#FF0000]" />
+                <p className="mt-4 flex items-start gap-3">
+                  <span className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-red-100">
+                    <Code size={16} className="text-[#FF0000]" />
                   </span>
-                  <span className="font-semibold">Talk to Benji</span> - A <span className="font-semibold">live multimodal engineer</span> with <span className="font-semibold">advanced screen understanding</span> who navigates your UI like a real user, runs precise end to end workflows, and catches the bugs that slip through.
+                  <span>
+                    <span className="font-semibold">Talk to Benji</span> - A <span className="font-semibold">live multimodal engineer</span> with <span className="font-semibold">advanced screen understanding</span> who navigates your UI like a real user, runs precise end to end workflows, and catches the bugs that slip through!
+                  </span>
                 </p>
-                <p className="mt-3">
-                  <span className="inline-flex items-center gap-2 mr-1 align-middle">
-                    <TrendingUp size={18} className="text-[#FF0000]" />
+                <p className="mt-3 flex items-start gap-3">
+                  <span className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-red-100">
+                    <TrendingUp size={16} className="text-[#FF0000]" />
                   </span>
-                  Benji also <span className="font-semibold">writes the code to fix them</span>, so you <span className="font-semibold">ship faster</span> and build a better app people genuinely love using!
+                  <span>
+                    Benji also <span className="font-semibold">writes the code to fix them</span>, so you <span className="font-semibold">ship faster</span> and build a better app people genuinely love using!
+                  </span>
                 </p>
               </div>
             </div>
