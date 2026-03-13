@@ -32,6 +32,7 @@ interface WorkflowRunSummary {
   status: "passed" | "failed";
   bugDetected: boolean;
   sessionId?: string | null;
+  createdAt: number;
 }
 
 const splitReasonFromText = (text: string): { summaryText: string; reasonText?: string } => {
@@ -399,6 +400,7 @@ export default function Home() {
                 status: isPassed ? "passed" : "failed",
                 bugDetected: isFailed,
                 sessionId: runSessionId || sessionId,
+                createdAt: Date.now(),
               },
             ]);
             addLog("status", "Benji Test Lab is ready. Enter the next UI workflow test and click Run Workflow.");
@@ -954,17 +956,19 @@ export default function Home() {
         <div className="w-[420px] bg-[#f7f7f7] border border-gray-200 flex flex-col overflow-hidden shadow-sm flex-shrink-0">
           <div className="relative overflow-hidden border-b border-gray-200 bg-[#efebf8] p-6 flex-shrink-0">
             <div
-              className="absolute inset-0 opacity-45"
+              className="absolute inset-0 opacity-50"
               style={{
                 backgroundImage:
-                  "linear-gradient(to right, rgba(148,163,184,0.16) 1px, transparent 1px), linear-gradient(to bottom, rgba(148,163,184,0.16) 1px, transparent 1px)",
-                backgroundSize: "20px 20px",
+                  "linear-gradient(to right, rgba(99,102,241,0.16) 1px, transparent 1px), linear-gradient(to bottom, rgba(99,102,241,0.16) 1px, transparent 1px)",
+                backgroundSize: "18px 18px",
               }}
             />
             <div className="relative z-10">
-              <div className="text-xs uppercase tracking-wide text-gray-500 mb-2">Current Workflow</div>
-              <div className="text-[20px] leading-[1.45] font-normal text-[#222] tracking-[-0.01em]">
-                {currentWorkflowName || "Test Lab connected. Enter a workflow and run a test."}
+              <div className="text-[11px] uppercase tracking-wide text-gray-600 mb-2">Benji is currently working on:</div>
+              <div className="inline-block max-w-full border border-red-700 bg-[#FF0000] px-3 py-2 shadow-sm">
+                <div className="truncate text-[15px] leading-6 font-medium tracking-[-0.01em] text-white">
+                  {currentWorkflowName || "Waiting for next workflow test..."}
+                </div>
               </div>
 
               <div className="mt-4 flex flex-wrap gap-2 text-xs">
@@ -1000,28 +1004,45 @@ export default function Home() {
                 {workflowRuns.length === 0 ? (
                   <div className="text-xs text-gray-500">No workflows run yet.</div>
                 ) : (
-                  <ol className="relative max-h-36 space-y-2 overflow-y-auto pr-1">
-                    {workflowRuns.slice().reverse().map((run) => (
-                      <li key={run.id} className="relative pl-10">
-                        <span className="absolute left-0 top-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-300 bg-white text-[11px] font-semibold text-slate-700">
-                          {run.id}
-                        </span>
-                        <div className="border-l border-slate-300/70 pl-3 pb-1">
-                          <div className="flex items-center gap-2">
-                            <span className="truncate text-xs font-medium text-gray-700">{run.name}</span>
-                            <span className={`px-2 py-0.5 text-[10px] font-semibold tracking-wide ${run.status === "passed" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                  <div className="overflow-x-auto pb-1">
+                    <div className="flex min-w-max gap-3 pr-1">
+                      {workflowRuns.slice().reverse().map((run, index) => {
+                        const stickyColorVariants = [
+                          "border-[#e2d89b] bg-[#fff9d8] text-[#665b27]",
+                          "border-[#cfe2f8] bg-[#eaf4ff] text-[#285075]",
+                          "border-[#ddd5f4] bg-[#f3efff] text-[#4f4278]",
+                          "border-[#cde7d6] bg-[#ebf8ef] text-[#2f5d41]",
+                        ];
+                        const variantClass = stickyColorVariants[index % stickyColorVariants.length];
+                        return (
+                        <div
+                          key={run.id}
+                          className={`w-44 flex-shrink-0 border p-3 shadow-[3px_4px_0px_rgba(100,100,120,0.18)] ${variantClass} ${
+                            run.status === "passed" ? "rotate-[-1deg]" : "rotate-[1deg]"
+                          }`}
+                        >
+                          <div className="mb-2 flex items-center justify-between">
+                            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-black text-[10px] font-bold text-white">
+                              {run.id}
+                            </span>
+                            <span className={`px-1.5 py-0.5 text-[10px] font-bold ${run.status === "passed" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
                               {run.status === "passed" ? "PASS" : "FAIL"}
                             </span>
-                            {run.bugDetected && (
-                              <span className="px-2 py-0.5 text-[10px] font-semibold tracking-wide bg-amber-100 text-amber-700">
-                                BUG
-                              </span>
-                            )}
                           </div>
+                          <div className="line-clamp-3 text-xs leading-4">{run.name}</div>
+                          <div className="mt-1 text-[9px] leading-3 text-gray-600/80">
+                            {new Date(run.createdAt).toLocaleDateString()} {new Date(run.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </div>
+                          {run.bugDetected && (
+                            <div className="mt-2 inline-block bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
+                              BUG FOUND
+                            </div>
+                          )}
                         </div>
-                      </li>
-                    ))}
-                  </ol>
+                        );
+                      })}
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
