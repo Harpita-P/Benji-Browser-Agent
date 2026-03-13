@@ -205,17 +205,21 @@ export default function Home() {
   // Animated bug grid
   useEffect(() => {
     const bugs = [
-      { bug: 'Image aspect ratio broken', color: 'bg-purple-100/45 text-purple-700/80' },
-      { bug: 'Z-index stacking issues', color: 'bg-red-100/45 text-red-700/80' },
-      { bug: 'Missing hover states', color: 'bg-purple-100/45 text-purple-700/80' },
-      { bug: 'Modal overlay gaps', color: 'bg-red-100/45 text-red-700/80' },
-      { bug: 'Input placeholder style', color: 'bg-purple-100/45 text-purple-700/80' },
-      { bug: 'Button alignment off', color: 'bg-red-100/45 text-red-700/80' },
+      { bug: 'Image aspect ratio broken' },
+      { bug: 'Z-index stacking issues' },
+      { bug: 'Missing hover states' },
+      { bug: 'Modal overlay gaps' },
+      { bug: 'Input placeholder style' },
+      { bug: 'Button alignment off' },
     ];
+    const highlightColors = ['bg-red-100/45 text-red-700/85', 'bg-gray-700/35 text-gray-900/90'];
+    let highlightIndex = 0;
 
     const interval = setInterval(() => {
       for (let i = 0; i < 2; i += 1) {
         const randomBug = bugs[Math.floor(Math.random() * bugs.length)];
+        const color = highlightColors[highlightIndex % highlightColors.length];
+        highlightIndex += 1;
         let randomRow = Math.floor(Math.random() * 10);
         let randomCol = Math.floor(Math.random() * 16);
 
@@ -227,7 +231,7 @@ export default function Home() {
 
         const id = Date.now() + i;
 
-        setActiveBugs(prev => [...prev, { id, row: randomRow, col: randomCol, ...randomBug }]);
+        setActiveBugs(prev => [...prev, { id, row: randomRow, col: randomCol, ...randomBug, color }]);
 
         setTimeout(() => {
           setActiveBugs(prev => prev.filter(b => b.id !== id));
@@ -313,7 +317,6 @@ export default function Home() {
     wsRef.current = ws;
 
     ws.onopen = () => {
-      addLog("status", "Connected to agent");
       ws.send(JSON.stringify({ 
         prompt: fullPrompt,
         client_id: "default"  // Must match CLIENT_ID in local playwright_client.py
@@ -426,7 +429,6 @@ export default function Home() {
     };
 
     ws.onclose = () => {
-      addLog("status", "Disconnected from agent");
       wsRef.current = null;
       setIsRunning(false);
     };
@@ -964,8 +966,10 @@ export default function Home() {
               }}
             />
             <div className="relative z-10">
-              <div className="text-[11px] uppercase tracking-wide text-gray-600 mb-2">Benji is currently working on:</div>
               <div className="inline-block max-w-full border border-red-700 bg-[#FF0000] px-3 py-2 shadow-sm">
+                <div className="mb-1 inline-flex items-center bg-black/25 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+                  Active Test
+                </div>
                 <div className="truncate text-[15px] leading-6 font-medium tracking-[-0.01em] text-white">
                   {currentWorkflowName || "Waiting for next workflow test..."}
                 </div>
@@ -994,13 +998,13 @@ export default function Home() {
                 </div>
                 <div className="inline-flex items-center gap-2 rounded-full border border-blue-300/90 bg-blue-50/90 px-3 py-1.5">
                   <span className="h-2 w-2 rounded-full bg-blue-500" />
-                  <span className="text-blue-700">Fixes</span>
+                  <span className="text-blue-700">Code Fixes</span>
                   <span className="font-semibold text-blue-800">{codeFixCount}</span>
                 </div>
               </div>
 
               <div className="mt-5">
-                <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Workflow outcomes</div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">All Past Test Outcomes</div>
                 {workflowRuns.length === 0 ? (
                   <div className="text-xs text-gray-500">No workflows run yet.</div>
                 ) : (
@@ -1022,8 +1026,8 @@ export default function Home() {
                           }`}
                         >
                           <div className="mb-2 flex items-center justify-between">
-                            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-black text-[10px] font-bold text-white">
-                              {run.id}
+                            <span className="inline-flex items-center bg-black px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                              Test {run.id}
                             </span>
                             <span className={`px-1.5 py-0.5 text-[10px] font-bold ${run.status === "passed" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
                               {run.status === "passed" ? "PASS" : "FAIL"}
@@ -1031,7 +1035,7 @@ export default function Home() {
                           </div>
                           <div className="line-clamp-3 text-xs leading-4">{run.name}</div>
                           <div className="mt-1 text-[9px] leading-3 text-gray-600/80">
-                            {new Date(run.createdAt).toLocaleDateString()} {new Date(run.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            Tested on: {new Date(run.createdAt).toLocaleDateString()}
                           </div>
                           {run.bugDetected && (
                             <div className="mt-2 inline-block bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
