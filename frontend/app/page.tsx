@@ -582,7 +582,7 @@ export default function Home() {
                   GitHub ADK MCP
                 </span>
               </div>
-              <div className="text-gray-900 text-lg max-w-4xl mx-auto font-light leading-relaxed text-justify bg-gray-100/90 border border-gray-200/90 backdrop-blur-sm rounded-2xl px-6 py-5 md:px-8 md:py-7 shadow-sm">
+              <div className="text-gray-900 text-lg max-w-4xl mx-auto font-light leading-relaxed text-justify bg-amber-50/90 border border-amber-100/90 backdrop-blur-sm rounded-2xl px-6 py-5 md:px-8 md:py-7 shadow-sm">
                 <p className="text-center text-xl md:text-2xl font-normal text-[#FF0000]" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
                   Build and ship with more confidence with an AI teammate
                   <br />
