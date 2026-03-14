@@ -175,7 +175,12 @@ export default function Home() {
   };
 
   const playAudioFromBase64 = async (base64Audio: string) => {
-    if (isVoiceMuted || !base64Audio) return;
+    if (isVoiceMuted || !base64Audio) {
+      console.log('Audio skipped:', { isVoiceMuted, hasAudio: !!base64Audio });
+      return;
+    }
+    
+    console.log('Received audio data, length:', base64Audio.length);
     
     // Add to queue
     audioQueueRef.current.push(base64Audio);
@@ -196,21 +201,32 @@ export default function Home() {
           for (let i = 0; i < binaryString.length; i++) {
             bytes[i] = binaryString.charCodeAt(i);
           }
-          const blob = new Blob([bytes], { type: 'audio/mp3' });
+          const blob = new Blob([bytes], { type: 'audio/mpeg' });
           const url = URL.createObjectURL(blob);
+          
+          console.log('Playing audio, blob size:', blob.size);
           
           // Play audio
           const audio = new Audio(url);
+          audio.volume = 1.0;
+          
           await new Promise<void>((resolve, reject) => {
             audio.onended = () => {
+              console.log('Audio playback ended');
               URL.revokeObjectURL(url);
               resolve();
             };
             audio.onerror = (e) => {
+              console.error('Audio element error:', e);
               URL.revokeObjectURL(url);
               reject(e);
             };
-            audio.play().catch(reject);
+            audio.play().then(() => {
+              console.log('Audio play() succeeded');
+            }).catch((err) => {
+              console.error('Audio play() failed:', err);
+              reject(err);
+            });
           });
         } catch (error) {
           console.error('Audio playback error:', error);
@@ -482,9 +498,16 @@ export default function Home() {
         case "benji_thinking":
           if (message.content) {
             setLiveAgentUpdate(message.content);
+            console.log('Benji thinking message received:', { 
+              content: message.content, 
+              hasAudio: !!(message as any).audio,
+              audioLength: (message as any).audio?.length 
+            });
             // Play audio if available
             if ((message as any).audio) {
               playAudioFromBase64((message as any).audio);
+            } else {
+              console.warn('No audio data in benji_thinking message');
             }
           }
           break;

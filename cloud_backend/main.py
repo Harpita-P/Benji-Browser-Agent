@@ -400,15 +400,27 @@ Run the workflow now. End with either:
                 
                 # Extract current_update JSON field from thinking
                 import re
-                json_match = re.search(r'\{"current_update":\s*"([^"]+)"\}', thinking_content)
-                if json_match:
-                    current_update = json_match.group(1)
-                    # Remove the JSON field from thinking content for display in left panel
-                    thinking_content_display = re.sub(r'\{"current_update":\s*"[^"]+"\}\s*', '', thinking_content)
-                else:
+                # Try multiple JSON patterns to be more robust
+                json_patterns = [
+                    r'\{"current_update":\s*"([^"]+)"\}',
+                    r'\{\'current_update\':\s*\'([^\']+)\'\}',
+                    r'current_update["\']?\s*:\s*["\']([^"\']+)["\']',
+                ]
+                
+                current_update = ""
+                for pattern in json_patterns:
+                    json_match = re.search(pattern, thinking_content, re.IGNORECASE)
+                    if json_match:
+                        current_update = json_match.group(1).strip()
+                        break
+                
+                if not current_update:
                     # Fallback to first sentence if no JSON found
                     current_update = thinking_content.split('.')[0][:100] if thinking_content else "Processing..."
-                    thinking_content_display = thinking_content
+                
+                # Remove ALL JSON-like patterns from thinking content for display
+                thinking_content_display = re.sub(r'\{["\']?current_update["\']?\s*:\s*["\'][^"\']+["\']\}\s*', '', thinking_content, flags=re.IGNORECASE)
+                thinking_content_display = thinking_content_display.strip()
                 
                 logger.info(
                     "turn thinking session_id=%s turn=%s content=%s",
@@ -677,9 +689,18 @@ Run the workflow now. End with either:
         import re
         verdict_current_update = ""
         if turn_thinking_content:
-            json_match = re.search(r'\{"current_update":\s*"([^"]+)"\}', turn_thinking_content)
-            if json_match:
-                verdict_current_update = json_match.group(1)
+            # Try multiple JSON patterns to be more robust
+            json_patterns = [
+                r'\{"current_update":\s*"([^"]+)"\}',
+                r'\{\'current_update\':\s*\'([^\']+)\'\}',
+                r'current_update["\']?\s*:\s*["\']([^"\']+)["\']',
+            ]
+            
+            for pattern in json_patterns:
+                json_match = re.search(pattern, turn_thinking_content, re.IGNORECASE)
+                if json_match:
+                    verdict_current_update = json_match.group(1).strip()
+                    break
         
         # Fallback to friendly default if no current_update found
         if not verdict_current_update:
