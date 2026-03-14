@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import { Play, Loader2, AlertCircle, Code, MessageSquare, Gamepad2, TrendingUp, X, Clock, Mic, MicOff, ArrowRight, CheckCircle } from "lucide-react";
+import { Play, Loader2, AlertCircle, Code, MessageSquare, Gamepad2, TrendingUp, X, Clock, Mic, MicOff, ArrowRight, CheckCircle, MousePointer } from "lucide-react";
 
 interface Message {
   type: string;
@@ -1032,7 +1032,8 @@ export default function Home() {
           <span className="text-white/90 text-sm font-medium">Testing Workspace</span>
         </div>
         <div className="flex items-center gap-4 flex-1 justify-center">
-          <div className="bg-white/20 border border-white/30 rounded-full px-4 py-2 backdrop-blur-sm">
+          <div className="bg-white/20 border border-white/30 rounded-md px-4 py-2 backdrop-blur-sm flex items-center gap-2">
+            <MousePointer className="w-4 h-4 text-white" />
             <span className="text-white text-sm">
               Benji will browse: {appUrl || "your app"}
             </span>
@@ -1142,6 +1143,17 @@ export default function Home() {
                   className="flex-1 bg-transparent text-base focus:outline-none"
                 />
                 <button
+                  onClick={toggleVoiceInput}
+                  className={`p-2 rounded-md transition-colors flex-shrink-0 ${
+                    isListening
+                      ? 'animate-pulse bg-red-100 text-[#FF0000]'
+                      : 'text-gray-500 hover:bg-gray-100'
+                  }`}
+                  title={isListening ? 'Stop recording' : 'Start voice input'}
+                >
+                  {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                </button>
+                <button
                   onClick={handleRun}
                   disabled={isRunning || !prompt.trim()}
                   className="px-4 py-2 text-sm bg-[#FF0000] text-white rounded-md hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
@@ -1180,10 +1192,10 @@ export default function Home() {
             <div className="relative z-10">
               <div className="border border-red-700 bg-[#FF0000] px-4 py-3 shadow-sm">
                 <div className="mb-1 inline-flex items-center bg-black/25 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
-                  Active Test
+                  Agent Task
                 </div>
                 <div className="text-[15px] leading-6 font-medium tracking-[-0.01em] text-white break-words">
-                  {currentWorkflowName || "Waiting for next workflow test..."}
+                  {currentWorkflowName || "Current test workflow will appear here"}
                 </div>
               </div>
 
