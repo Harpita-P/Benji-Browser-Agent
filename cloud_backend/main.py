@@ -367,18 +367,23 @@ Run the workflow now. End with either:
                     "type": "thinking",
                     "content": thinking_content
                 })
-                try:
-                    benji_thinking = await _generate_benji_thinking(
-                        client,
-                        event_type="thinking",
-                        raw_text=thinking_content,
-                    )
-                    await websocket.send_json({
-                        "type": "benji_thinking",
-                        "content": benji_thinking,
-                    })
-                except Exception:
-                    logger.exception("benji_thinking_generation_failed session_id=%s turn=%s source=thinking", session_id, turn_number)
+                
+                # Generate benji_thinking in background without blocking
+                async def send_benji_thinking_for_thought():
+                    try:
+                        benji_thinking = await _generate_benji_thinking(
+                            client,
+                            event_type="thinking",
+                            raw_text=thinking_content,
+                        )
+                        await websocket.send_json({
+                            "type": "benji_thinking",
+                            "content": benji_thinking,
+                        })
+                    except Exception:
+                        logger.exception("benji_thinking_generation_failed session_id=%s turn=%s source=thinking", session_id, turn_number)
+                
+                asyncio.create_task(send_benji_thinking_for_thought())
                 
                 # Log thinking
                 session_logs[session_id].append({
@@ -468,18 +473,23 @@ Run the workflow now. End with either:
                     "function_name": function_call.name,
                     "args": dict(function_call.args),
                 })
-                try:
-                    benji_action_summary = await _generate_benji_thinking(
-                        client,
-                        event_type="action",
-                        raw_text=f"{function_call.name} args={json.dumps(dict(function_call.args), ensure_ascii=True)}",
-                    )
-                    await websocket.send_json({
-                        "type": "benji_thinking",
-                        "content": benji_action_summary,
-                    })
-                except Exception:
-                    logger.exception("benji_thinking_generation_failed session_id=%s turn=%s source=action", session_id, turn_number)
+                
+                # Generate benji_thinking in background without blocking
+                async def send_benji_thinking_for_action():
+                    try:
+                        benji_action_summary = await _generate_benji_thinking(
+                            client,
+                            event_type="action",
+                            raw_text=f"{function_call.name} args={json.dumps(dict(function_call.args), ensure_ascii=True)}",
+                        )
+                        await websocket.send_json({
+                            "type": "benji_thinking",
+                            "content": benji_action_summary,
+                        })
+                    except Exception:
+                        logger.exception("benji_thinking_generation_failed session_id=%s turn=%s source=action", session_id, turn_number)
+                
+                asyncio.create_task(send_benji_thinking_for_action())
                 
                 # Send to Playwright client for execution
                 await playwright_ws.send_json({
