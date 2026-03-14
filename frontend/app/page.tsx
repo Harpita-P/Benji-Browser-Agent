@@ -104,8 +104,11 @@ export default function Home() {
   const backendWsBase = sanitizeBaseUrl(process.env.NEXT_PUBLIC_BACKEND_WS_URL || "ws://localhost:8080");
   const [prompt, setPrompt] = useState("");
   const [appUrl, setAppUrl] = useState("");
+  const [appName, setAppName] = useState("");
   const [repoOwner, setRepoOwner] = useState("");
   const [repoName, setRepoName] = useState("");
+  const [showGitHubModal, setShowGitHubModal] = useState(false);
+  const [isGitHubConnected, setIsGitHubConnected] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [screenshot, setScreenshot] = useState<string | null>(null);
   const [logs, setLogs] = useState<Array<{ type: string; content: string; timestamp: Date; stepNumber?: number; stepTitle?: string; functionName?: string }>>([]);
@@ -393,8 +396,8 @@ export default function Home() {
   };
 
   const ensureWorkspace = (): boolean => {
-    if (!appUrl.trim() || !repoOwner.trim() || !repoName.trim()) {
-      alert("Please provide Your App URL, GitHub Owner, and Repository to open a workspace.");
+    if (!appUrl.trim() || !appName.trim()) {
+      alert("Please provide App Name and App URL to launch a workspace.");
       return false;
     }
 
@@ -898,8 +901,24 @@ export default function Home() {
                 </div>
                 <div className="space-y-4 p-6">
                   <div>
+                    <label htmlFor="app-name" className="mb-2 inline-block bg-black px-3 py-1 text-xs font-medium text-white" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
+                      App Name
+                    </label>
+                    <input
+                      id="app-name"
+                      title="App Name"
+                      type="text"
+                      value={appName}
+                      onChange={(e) => setAppName(e.target.value)}
+                      placeholder="e.g., My Todo App"
+                      className="w-full rounded-md border border-gray-300 bg-white px-6 py-3 text-base focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
+                      style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}
+                    />
+                  </div>
+
+                  <div>
                     <label htmlFor="app-url" className="mb-2 inline-block bg-black px-3 py-1 text-xs font-medium text-white" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
-                      Your App URL
+                      App URL
                     </label>
                     <input
                       id="app-url"
@@ -907,74 +926,20 @@ export default function Home() {
                       type="url"
                       value={appUrl}
                       onChange={(e) => setAppUrl(e.target.value)}
+                      placeholder="http://localhost:3000"
                       className="w-full rounded-md border border-gray-300 bg-white px-6 py-3 text-base focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
                       style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div>
-                      <label htmlFor="github-owner" className="mb-2 inline-block bg-black px-3 py-1 text-xs font-medium text-white" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
-                        GitHub Owner
-                      </label>
-                      <input
-                        id="github-owner"
-                        title="GitHub Owner"
-                        type="text"
-                        value={repoOwner}
-                        onChange={(e) => setRepoOwner(e.target.value)}
-                        className="w-full rounded-md border border-gray-300 bg-white px-4 py-3 text-base focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
-                        style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="github-repository" className="mb-2 inline-block bg-black px-3 py-1 text-xs font-medium text-white" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
-                        Repository
-                      </label>
-                      <input
-                        id="github-repository"
-                        title="Repository"
-                        type="text"
-                        value={repoName}
-                        onChange={(e) => setRepoName(e.target.value)}
-                        className="w-full rounded-md border border-gray-300 bg-white px-4 py-3 text-base focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
-                        style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-4">
-                    <div className="relative flex-1">
-                      <input
-                        type="text"
-                        value={prompt}
-                        onChange={(e) => setPrompt(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && handleRun()}
-                        placeholder="Describe your UI test workflow..."
-                        className="w-full rounded-md border border-gray-300 bg-white px-6 py-4 pr-14 text-lg focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
-                        style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}
-                      />
-                      <button
-                        onClick={toggleVoiceInput}
-                        className={`absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-2 transition-colors ${
-                          isListening
-                            ? 'animate-pulse bg-red-100 text-[#FF0000]'
-                            : 'text-gray-500 hover:bg-gray-100'
-                        }`}
-                        title={isListening ? 'Stop recording' : 'Start voice input'}
-                      >
-                        {isListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-                      </button>
-                    </div>
-                    <button
-                      onClick={handleRun}
-                      disabled={!appUrl.trim() || !repoOwner.trim() || !repoName.trim() || isRunning}
-                      className="whitespace-nowrap rounded-md bg-[#FF0000] px-10 py-4 text-lg font-medium text-white transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
-                      style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}
-                    >
-                      {prompt.trim() ? "Run in Test Lab →" : "Open Test Lab →"}
-                    </button>
-                  </div>
+                  <button
+                    onClick={handleRun}
+                    disabled={!appUrl.trim() || !appName.trim() || isRunning}
+                    className="w-full rounded-md bg-[#FF0000] px-10 py-4 text-lg font-medium text-white transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                    style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}
+                  >
+                    Launch New Workspace →
+                  </button>
                   {isListening && (
                     <div className="flex items-center gap-2 text-sm text-[#FF0000]">
                       <div className="h-2 w-2 animate-pulse rounded-full bg-[#FF0000]"></div>
@@ -1053,81 +1018,138 @@ export default function Home() {
   return (
     <div className="h-screen bg-white flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-7 h-7 bg-[#FF0000] rounded flex items-center justify-center text-white font-bold text-xs">
-            B
-          </div>
-          <span className="font-semibold">
-            {workspaceName ? `${workspaceName} · Benji Test Lab` : "Benji Test Lab"}
+      <header className="bg-[#FF0000] px-6 py-4 flex items-center justify-between flex-shrink-0">
+        <div className="flex items-center gap-4">
+          <span className="text-white font-semibold text-lg">
+            {appName || "My App"}
+          </span>
+          <span className="text-white/80 text-sm">
+            Benji will browse: {appUrl || "your app"}
           </span>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="hidden lg:flex items-center gap-2 border border-gray-300 px-3 py-1.5 bg-gray-50 min-w-[360px]">
-            <input
-              type="text"
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && !isRunning && handleRun()}
-              placeholder="Enter next UI workflow test..."
-              className="w-full bg-transparent text-sm outline-none"
-            />
-            <button
-              onClick={handleRun}
-              disabled={isRunning || !prompt.trim()}
-              className="px-3 py-1 text-xs bg-[#FF0000] text-white hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Run Workflow
-            </button>
-          </div>
-          <button 
-            onClick={handleAnalyzeBugs}
-            disabled={!sessionId || isAnalyzing || isRunning}
-            className="px-3 py-1.5 text-sm bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowGitHubModal(true)}
+            className="px-4 py-2 text-sm bg-white/10 text-white rounded-md hover:bg-white/20 flex items-center gap-2 border border-white/20"
           >
-            {isAnalyzing ? (
+            {isGitHubConnected ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Analyzing...
+                <div className="w-2 h-2 rounded-full bg-green-400"></div>
+                Benji Connected to Github
               </>
             ) : (
-              <>
-                <Code className="w-4 h-4" />
-                Analyze & Fix Bugs
-              </>
+              "Connect Benji to Github"
             )}
           </button>
           <button
             onClick={() => setIsVoiceMuted(!isVoiceMuted)}
-            className="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50 flex items-center gap-2"
+            className="px-3 py-2 text-sm bg-white/10 text-white rounded-md hover:bg-white/20 flex items-center gap-2 border border-white/20"
             title={isVoiceMuted ? "Unmute Benji's voice" : "Mute Benji's voice"}
           >
-            {isVoiceMuted ? (
-              <>
-                <MicOff className="w-4 h-4" />
-                Voice Off
-              </>
-            ) : (
-              <>
-                <Mic className="w-4 h-4" />
-                Voice On
-              </>
-            )}
+            {isVoiceMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
           </button>
           <button
             onClick={handleClose}
-            className="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50 flex items-center gap-2"
+            className="px-3 py-2 text-sm bg-white/10 text-white rounded-md hover:bg-white/20 flex items-center gap-2 border border-white/20"
           >
-            Close Workspace <X className="w-4 h-4" />
+            <X className="w-4 h-4" />
           </button>
         </div>
       </header>
 
+      {/* GitHub Connection Modal */}
+      {showGitHubModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowGitHubModal(false)}>
+          <div className="bg-white rounded-lg p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold mb-4">Connect to GitHub</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">GitHub Owner</label>
+                <input
+                  type="text"
+                  value={repoOwner}
+                  onChange={(e) => setRepoOwner(e.target.value)}
+                  placeholder="username or organization"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Repository Name</label>
+                <input
+                  type="text"
+                  value={repoName}
+                  onChange={(e) => setRepoName(e.target.value)}
+                  placeholder="repository-name"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
+                />
+              </div>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setShowGitHubModal(false)}
+                  className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (repoOwner.trim() && repoName.trim()) {
+                      setIsGitHubConnected(true);
+                      setShowGitHubModal(false);
+                    }
+                  }}
+                  disabled={!repoOwner.trim() || !repoName.trim()}
+                  className="px-4 py-2 text-sm bg-[#FF0000] text-white rounded-md hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Connect
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden min-h-0 gap-4 p-4">
+      <div className="flex-1 flex overflow-hidden min-h-0 gap-6 p-6">
         {/* Left Sidebar - Steps */}
-        <div className="w-[420px] bg-[#f7f7f7] border border-gray-200 flex flex-col overflow-hidden shadow-sm flex-shrink-0">
-          <div className="relative overflow-hidden border-b border-gray-200 bg-[#efebf8] p-6 flex-shrink-0">
+        <div className="w-[420px] bg-[#f5f5f5] border border-gray-200 rounded-lg flex flex-col overflow-hidden shadow-sm flex-shrink-0">
+          <div className="p-6 border-b border-gray-200 flex-shrink-0">
+            <div className="flex items-center gap-3 mb-4">
+              <Mic className="w-5 h-5 text-[#FF0000]" />
+              <input
+                type="text"
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && !isRunning && handleRun()}
+                placeholder="Speak or type your UI workflow..."
+                className="flex-1 bg-white border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
+              />
+              <button
+                onClick={handleRun}
+                disabled={isRunning || !prompt.trim()}
+                className="px-4 py-2 text-sm bg-[#FF0000] text-white rounded-md hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Run
+              </button>
+            </div>
+            <button 
+              onClick={handleAnalyzeBugs}
+              disabled={!sessionId || isAnalyzing || isRunning}
+              className="w-full px-4 py-2 text-sm bg-black text-white rounded-md hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {isAnalyzing ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Analyzing...
+                </>
+              ) : (
+                <>
+                  <Code className="w-4 h-4" />
+                  Analyze & Fix Bugs
+                </>
+              )}
+            </button>
+          </div>
+          <div className="relative overflow-hidden border-b border-gray-200 bg-[#f9f9f9] p-6 flex-shrink-0">
             <div
               className="absolute inset-0 opacity-50"
               style={{
@@ -1175,7 +1197,6 @@ export default function Home() {
               </div>
 
               <div className="mt-5">
-                <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">All Past Test Outcomes</div>
                 {workflowRuns.length === 0 ? (
                   <div className="text-xs text-gray-500">No workflows run yet.</div>
                 ) : (
