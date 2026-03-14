@@ -101,7 +101,7 @@ async def _generate_content_with_retry(
     raise RuntimeError(_friendly_quota_message())
 
 
-def _generate_benji_thinking(
+async def _generate_benji_thinking(
     client: genai.Client,
     *,
     event_type: str,
@@ -123,12 +123,31 @@ Raw update:
 {raw_text}
 """.strip()
 
-    response = client.models.generate_content(
-        model=THINKING_SUMMARY_MODEL_ID,
-        contents=prompt,
-    )
-    text = getattr(response, "text", "") or ""
-    return text.strip()[:160] if text else "Benji is analyzing the current step."
+    max_attempts = 3
+    base_delay = 1.0
+    
+    for attempt in range(1, max_attempts + 1):
+        try:
+            response = client.models.generate_content(
+                model=THINKING_SUMMARY_MODEL_ID,
+                contents=prompt,
+            )
+            text = getattr(response, "text", "") or ""
+            return text.strip()[:160] if text else "Benji is analyzing the current step."
+        except Exception as exc:
+            is_quota_error = _is_quota_or_rate_limit_error(exc)
+            if not is_quota_error or attempt == max_attempts:
+                logger.warning(
+                    "benji_thinking_generation_failed attempt=%s/%s quota_error=%s error=%s",
+                    attempt,
+                    max_attempts,
+                    is_quota_error,
+                    _clip_text(str(exc), 200),
+                )
+                return "Benji is processing the current step."
+            
+            delay = base_delay * (2 ** (attempt - 1))
+            await asyncio.sleep(delay)
 
 
 app = FastAPI()
@@ -349,7 +368,7 @@ Run the workflow now. End with either:
                     "content": thinking_content
                 })
                 try:
-                    benji_thinking = _generate_benji_thinking(
+                    benji_thinking = await _generate_benji_thinking(
                         client,
                         event_type="thinking",
                         raw_text=thinking_content,

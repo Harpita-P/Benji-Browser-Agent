@@ -355,7 +355,7 @@ export default function Home() {
     setTurnNumber(0);
     setAnalysisResult(null);
     setShowAgentThoughtLogs(false);
-    setLiveAgentUpdate("Standing by for next action...");
+    setLiveAgentUpdate("Waiting for model updates...");
     setAgentCursor({ x: 50, y: 50, visible: false });
     let runSessionId: string | null = null;
 
@@ -421,6 +421,12 @@ export default function Home() {
           if (message.content) {
             addLog("error", message.content);
             setLiveAgentUpdate("Hit an issue while testing this flow.");
+          }
+          break;
+
+        case "benji_thinking":
+          if (message.content) {
+            setLiveAgentUpdate(message.content);
           }
           break;
 
@@ -522,7 +528,7 @@ export default function Home() {
     setSessionId(null);
     setAnalysisResult(null);
     setShowAgentThoughtLogs(false);
-    setLiveAgentUpdate("Standing by for next action...");
+    setLiveAgentUpdate("Waiting for model updates...");
     setAgentCursor({ x: 50, y: 50, visible: false });
     setShowExecution(false);
     setSessionStartTime(null);
