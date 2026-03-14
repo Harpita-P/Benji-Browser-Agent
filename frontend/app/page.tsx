@@ -1260,13 +1260,16 @@ export default function Home() {
                               transform: "translate(-50%, -50%)",
                             }}
                           >
-                            <Image
-                              src="/agentic_cursor.png"
-                              alt="Agent cursor"
-                              width={44}
-                              height={44}
-                              className="h-11 w-11 object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)]"
-                            />
+                            <div className="relative">
+                              <div className="absolute inset-0 -m-3 rounded-full border-4 border-pink-500/60 animate-pulse" />
+                              <Image
+                                src="/agentic_cursor.png"
+                                alt="Agent cursor"
+                                width={44}
+                                height={44}
+                                className="h-11 w-11 object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)]"
+                              />
+                            </div>
                           </div>
                           <div
                             className="absolute z-10 max-w-[260px] rounded-xl border border-blue-300/80 bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-1.5 text-xs font-medium text-white shadow-lg transition-all duration-500 ease-out"

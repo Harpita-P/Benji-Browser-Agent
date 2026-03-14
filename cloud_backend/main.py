@@ -170,7 +170,7 @@ session_meta: Dict[str, Dict] = {}  # session_id -> metadata for run outcome and
 
 # Gemini configuration - Computer Use model
 COMPUTER_USE_MODEL_ID = os.getenv("COMPUTER_USE_MODEL_ID", "gemini-2.5-computer-use-preview-10-2025")
-THINKING_SUMMARY_MODEL_ID = os.getenv("THINKING_SUMMARY_MODEL_ID", "gemini-2.0-flash")
+THINKING_SUMMARY_MODEL_ID = os.getenv("THINKING_SUMMARY_MODEL_ID", "gemini-2.5-flash")
 logger.info("startup model=%s", COMPUTER_USE_MODEL_ID)
 
 QA_WORKFLOW_SYSTEM_PROMPT = """
