@@ -358,9 +358,12 @@ Run the workflow now. End with either:
                 json_match = re.search(r'\{"current_update":\s*"([^"]+)"\}', thinking_content)
                 if json_match:
                     current_update = json_match.group(1)
+                    # Remove the JSON field from thinking content for display in left panel
+                    thinking_content_display = re.sub(r'\{"current_update":\s*"[^"]+"\}\s*', '', thinking_content)
                 else:
                     # Fallback to first sentence if no JSON found
                     current_update = thinking_content.split('.')[0][:100] if thinking_content else "Processing..."
+                    thinking_content_display = thinking_content
                 
                 logger.info(
                     "turn thinking session_id=%s turn=%s content=%s",
@@ -370,7 +373,7 @@ Run the workflow now. End with either:
                 )
                 await websocket.send_json({
                     "type": "thinking",
-                    "content": thinking_content
+                    "content": thinking_content_display
                 })
                 
                 # Send current_update to benji_thinking bubble
@@ -415,6 +418,14 @@ Run the workflow now. End with either:
                         "type": "status",
                         "content": "Agent reported final test verdict"
                     })
+                    
+                    # Send benji_thinking message for final verdict
+                    if current_update:
+                        await websocket.send_json({
+                            "type": "benji_thinking",
+                            "content": current_update,
+                        })
+                    
                     break
 
                 await websocket.send_json({
