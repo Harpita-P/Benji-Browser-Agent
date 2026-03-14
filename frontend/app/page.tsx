@@ -1272,14 +1272,14 @@ export default function Home() {
                             </div>
                           </div>
                           <div
-                            className="absolute z-10 max-w-[260px] rounded-xl border border-blue-300/80 bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-1.5 text-xs font-medium text-white shadow-lg transition-all duration-500 ease-out"
+                            className="absolute z-10 max-w-[320px] rounded-xl border-2 border-black bg-gradient-to-r from-red-600 to-red-700 px-4 py-2.5 text-sm font-medium text-white shadow-2xl transition-all duration-500 ease-out"
                             style={{
-                              left: `${Math.min(agentCursor.x + 4, 78)}%`,
-                              top: `${Math.min(agentCursor.y + 3, 86)}%`,
+                              left: `${Math.min(agentCursor.x + 4, 75)}%`,
+                              top: `${Math.min(agentCursor.y + 3, 84)}%`,
                             }}
                           >
-                            <div className="text-[10px] uppercase tracking-wide text-blue-100/90">Benji Thinking</div>
-                            <div>{liveAgentUpdate}</div>
+                            <div className="text-[11px] uppercase tracking-wide text-red-100/95 font-semibold">Benji Thinking</div>
+                            <div className="mt-0.5">{liveAgentUpdate}</div>
                           </div>
                         </div>
                       )}

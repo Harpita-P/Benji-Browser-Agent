@@ -108,15 +108,22 @@ async def _generate_benji_thinking(
     raw_text: str,
 ) -> str:
     prompt = f"""
-You are Benji Thinking. Convert internal agent updates into one short user-friendly live update.
+You are Benji, a friendly QA tester narrating your work in real-time. Convert internal Computer Use agent updates into natural, human-like commentary.
 
-Rules:
-- Output a single sentence only.
-- Keep it under 14 words.
-- Present tense.
-- No markdown, no bullets.
-- Avoid mentioning models, tokens, or hidden reasoning.
-- If there is a bug/failure signal, mention that clearly and briefly.
+Voice & Style:
+- Sound like a real person testing the app - casual, natural, with personality.
+- Use phrases like "Let me...", "Checking out...", "I'm going to...", "Alright, clicking...", "Time to..."
+- Be conversational and engaging, not robotic or formal.
+- Keep it under 14 words but make it feel human.
+
+Content Rules:
+- Be SPECIFIC about UI elements, buttons, fields, pages - extract actual names from the update.
+- For actions: "Let me click the Add Task button" or "Alright, clicking on Submit"
+- For typing: "I'm typing 'New Project' in the title field" or "Entering the project name..."
+- For navigation: "Checking out the Projects page" or "Navigating to the dashboard"
+- For thinking: Share the insight naturally like "Hmm, looks like the form loaded" or "I see the login screen"
+- For test results: "Test passed! Everything works" or "Uh oh, test failed - found a bug"
+- No markdown, no bullets, just natural speech.
 
 Event type: {event_type}
 Raw update:
@@ -355,8 +362,11 @@ Run the workflow now. End with either:
                 if hasattr(part, "text") and part.text
             ]
             
+            # Store thinking content for this turn to use in action summaries
+            turn_thinking_content = ""
             if thoughts:
                 thinking_content = " ".join(thoughts)
+                turn_thinking_content = thinking_content
                 logger.info(
                     "turn thinking session_id=%s turn=%s content=%s",
                     session_id,
@@ -477,10 +487,12 @@ Run the workflow now. End with either:
                 # Generate benji_thinking in background without blocking
                 async def send_benji_thinking_for_action():
                     try:
+                        # Include agent's thinking context so Benji knows WHY this action is being taken
+                        action_context = f"Agent thinking: {turn_thinking_content}\n\nAction: {function_call.name} with args {json.dumps(dict(function_call.args), ensure_ascii=True)}"
                         benji_action_summary = await _generate_benji_thinking(
                             client,
                             event_type="action",
-                            raw_text=f"{function_call.name} args={json.dumps(dict(function_call.args), ensure_ascii=True)}",
+                            raw_text=action_context,
                         )
                         await websocket.send_json({
                             "type": "benji_thinking",
@@ -607,6 +619,23 @@ Run the workflow now. End with either:
             "type": "complete",
             "content": final_message
         })
+        
+        # Generate benji_thinking for final verdict
+        async def send_benji_thinking_for_completion():
+            try:
+                benji_verdict = await _generate_benji_thinking(
+                    client,
+                    event_type="completion",
+                    raw_text=final_message,
+                )
+                await websocket.send_json({
+                    "type": "benji_thinking",
+                    "content": benji_verdict,
+                })
+            except Exception:
+                logger.exception("benji_thinking_generation_failed session_id=%s source=completion", session_id)
+        
+        asyncio.create_task(send_benji_thinking_for_completion())
         
     except WebSocketDisconnect:
         if client_id in frontend_clients:
