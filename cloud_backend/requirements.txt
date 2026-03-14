@@ -2,6 +2,7 @@ fastapi
 uvicorn[standard]
 google-genai
 google-adk
+google-cloud-texttospeech
 python-dotenv
 websockets
 requests

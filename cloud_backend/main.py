@@ -6,15 +6,20 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from google import genai
+from google.cloud import texttospeech
 from typing import Dict, Optional
 import os
 import json
 import asyncio
 import logging
+import base64
 from dotenv import load_dotenv
 from github_agent import create_github_agent
 
 load_dotenv()
+
+# Initialize Google Cloud Text-to-Speech client
+tts_client = texttospeech.TextToSpeechClient()
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(
@@ -50,6 +55,46 @@ def _friendly_quota_message() -> str:
         "Sorry, I've hit the quota limit right now — let me try again soon. "
         "Please wait a moment and retry."
     )
+
+
+async def _generate_speech(text: str) -> str:
+    """
+    Generate speech audio from text using Google Cloud Text-to-Speech.
+    Returns base64-encoded audio data.
+    """
+    try:
+        # Configure the voice
+        voice = texttospeech.VoiceSelectionParams(
+            language_code="en-US",
+            name="en-US-Neural2-J",  # Natural female voice
+            ssml_gender=texttospeech.SsmlVoiceGender.FEMALE
+        )
+        
+        # Configure audio output
+        audio_config = texttospeech.AudioConfig(
+            audio_encoding=texttospeech.AudioEncoding.MP3,
+            speaking_rate=1.1,  # Slightly faster for natural feel
+            pitch=0.0,
+        )
+        
+        # Build the synthesis request
+        synthesis_input = texttospeech.SynthesisInput(text=text)
+        
+        # Perform the text-to-speech request (synchronous call in async context)
+        response = await asyncio.to_thread(
+            tts_client.synthesize_speech,
+            input=synthesis_input,
+            voice=voice,
+            audio_config=audio_config
+        )
+        
+        # Encode audio to base64 for transmission
+        audio_base64 = base64.b64encode(response.audio_content).decode('utf-8')
+        return audio_base64
+        
+    except Exception as e:
+        logger.warning("tts_generation_failed error=%s", str(e))
+        return ""
 
 
 async def _generate_content_with_retry(
