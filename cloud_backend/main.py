@@ -137,20 +137,28 @@ Your job:
 Important:
 - Be explicit about why the test passed or failed.
 - If failed, include "BUG DETECTED" in your thinking text.
+- CRITICAL: Modals closing automatically (e.g., after typing) is NOT a bug UNLESS it prevents the workflow from completing successfully. If the workflow goal is still achieved despite modal auto-close, the test should PASS.
+- STRICT INSTRUCTION: If a modal closes immediately after you interact with it, you MUST retry clicking/interacting with the element again. DO NOT report this as a bug or conclude failure. Simply retry the action. Only report a bug if the retry also fails or if the workflow cannot be completed after multiple attempts.
 
-CRITICAL: For every turn, you MUST include a JSON object in your thinking with a "shorter_message" field.
+CRITICAL: For every turn, you MUST include a JSON object in your thinking with a "current_update" field.
 Format your thinking like this:
-{"shorter_message": "One sentence summary of what you're doing"}
+{"current_update": "One sentence summary of what you're doing"}
 [Rest of your detailed thinking here]
 
-The shorter_message should be:
+The current_update should be:
 - Maximum 1 sentence (10-15 words)
 - Natural and human-like (e.g., "Clicking on Projects to view all projects", "Typing project name in the form")
 - Specific about UI elements and actions
-- Written in present tense
+- Written in present tense for actions
+
+SPECIAL CASE - Test Completion:
+When you conclude with TEST PASSED or TEST FAILED, make the current_update friendly and celebratory/explanatory:
+- For TEST PASSED: {"current_update": "Great! The test passed successfully"}
+- For TEST FAILED: {"current_update": "Test failed - [brief bug description]"}
+  Example: {"current_update": "Test failed - Create button didn't save the project"}
 
 Example thinking format:
-{"shorter_message": "Clicking on the Projects link in the sidebar"}
+{"current_update": "Clicking on the Projects link in the sidebar"}
 I can see the dashboard page has loaded successfully. I need to navigate to the Projects section to create a new project. I'll click on the "Projects" link in the left sidebar.
 """.strip()
 
@@ -340,19 +348,19 @@ Run the workflow now. End with either:
             
             # Store thinking content for this turn to use in action summaries
             turn_thinking_content = ""
-            shorter_message = ""
+            current_update = ""
             if thoughts:
                 thinking_content = " ".join(thoughts)
                 turn_thinking_content = thinking_content
                 
-                # Extract shorter_message JSON field from thinking
+                # Extract current_update JSON field from thinking
                 import re
-                json_match = re.search(r'\{"shorter_message":\s*"([^"]+)"\}', thinking_content)
+                json_match = re.search(r'\{"current_update":\s*"([^"]+)"\}', thinking_content)
                 if json_match:
-                    shorter_message = json_match.group(1)
+                    current_update = json_match.group(1)
                 else:
                     # Fallback to first sentence if no JSON found
-                    shorter_message = thinking_content.split('.')[0][:100] if thinking_content else "Processing..."
+                    current_update = thinking_content.split('.')[0][:100] if thinking_content else "Processing..."
                 
                 logger.info(
                     "turn thinking session_id=%s turn=%s content=%s",
@@ -365,10 +373,10 @@ Run the workflow now. End with either:
                     "content": thinking_content
                 })
                 
-                # Send shorter_message to benji_thinking bubble
+                # Send current_update to benji_thinking bubble
                 await websocket.send_json({
                     "type": "benji_thinking",
-                    "content": shorter_message,
+                    "content": current_update,
                 })
                 
                 # Log thinking
@@ -460,12 +468,25 @@ Run the workflow now. End with either:
                     "args": dict(function_call.args),
                 })
                 
-                # Send Computer Use agent's thinking for this turn as benji_thinking
-                if turn_thinking_content:
-                    await websocket.send_json({
-                        "type": "benji_thinking",
-                        "content": turn_thinking_content,
-                    })
+                # Send current_update for this turn as benji_thinking
+                # If no current_update from thinking, generate a default message based on action
+                benji_message = current_update
+                if not benji_message:
+                    # Generate friendly default message based on function name
+                    action_defaults = {
+                        "open_web_browser": "Opening the browser",
+                        "navigate": f"Navigating to {dict(function_call.args).get('url', 'page')}",
+                        "click_at": "Clicking on element",
+                        "type_text_at": f"Typing '{dict(function_call.args).get('text', 'text')}'",
+                        "scroll": "Scrolling the page",
+                        "wait": "Waiting for page to load",
+                    }
+                    benji_message = action_defaults.get(function_call.name, f"Executing {function_call.name}")
+                
+                await websocket.send_json({
+                    "type": "benji_thinking",
+                    "content": benji_message,
+                })
                 
                 # Send to Playwright client for execution
                 await playwright_ws.send_json({
@@ -590,10 +611,25 @@ Run the workflow now. End with either:
             "content": final_message
         })
         
+        # Extract current_update from final verdict if available, otherwise create friendly message
+        import re
+        verdict_current_update = ""
+        if turn_thinking_content:
+            json_match = re.search(r'\{"current_update":\s*"([^"]+)"\}', turn_thinking_content)
+            if json_match:
+                verdict_current_update = json_match.group(1)
+        
+        # Fallback to friendly default if no current_update found
+        if not verdict_current_update:
+            if final_status == "passed":
+                verdict_current_update = "Great! The test passed successfully"
+            else:
+                verdict_current_update = f"Test failed - {failure_reason[:50]}" if failure_reason else "Test failed - bug detected"
+        
         # Send final verdict as benji_thinking
         await websocket.send_json({
             "type": "benji_thinking",
-            "content": final_message,
+            "content": verdict_current_update,
         })
         
     except WebSocketDisconnect:

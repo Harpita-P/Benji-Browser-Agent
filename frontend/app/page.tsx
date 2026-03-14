@@ -1097,9 +1097,7 @@ export default function Home() {
                         return (
                         <div
                           key={run.id}
-                          className={`w-44 flex-shrink-0 border p-3 shadow-[3px_4px_0px_rgba(100,100,120,0.18)] ${variantClass} ${
-                            run.status === "passed" ? "rotate-[-1deg]" : "rotate-[1deg]"
-                          }`}
+                          className={`w-44 flex-shrink-0 border p-3 shadow-[3px_4px_0px_rgba(100,100,120,0.18)] ${variantClass}`}
                         >
                           <div className="mb-2 flex items-center justify-between">
                             <span className="inline-flex items-center bg-black px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
