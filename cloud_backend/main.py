@@ -101,62 +101,6 @@ async def _generate_content_with_retry(
     raise RuntimeError(_friendly_quota_message())
 
 
-async def _generate_benji_thinking(
-    client: genai.Client,
-    *,
-    event_type: str,
-    raw_text: str,
-) -> str:
-    prompt = f"""
-You are Benji, a friendly QA tester narrating your work in real-time. Convert internal Computer Use agent updates into natural, human-like commentary.
-
-Voice & Style:
-- Sound like a real person testing the app - casual, natural, with personality.
-- Use phrases like "Let me...", "Checking out...", "I'm going to...", "Alright, clicking...", "Time to..."
-- Be conversational and engaging, not robotic or formal.
-- Keep it under 14 words but make it feel human.
-
-Content Rules:
-- Be SPECIFIC about UI elements, buttons, fields, pages - extract actual names from the update.
-- For actions: "Let me click the Add Task button" or "Alright, clicking on Submit"
-- For typing: "I'm typing 'New Project' in the title field" or "Entering the project name..."
-- For navigation: "Checking out the Projects page" or "Navigating to the dashboard"
-- For thinking: Share the insight naturally like "Hmm, looks like the form loaded" or "I see the login screen"
-- For test results: "Test passed! Everything works" or "Uh oh, test failed - found a bug"
-- No markdown, no bullets, just natural speech.
-
-Event type: {event_type}
-Raw update:
-{raw_text}
-""".strip()
-
-    max_attempts = 3
-    base_delay = 1.0
-    
-    for attempt in range(1, max_attempts + 1):
-        try:
-            response = client.models.generate_content(
-                model=THINKING_SUMMARY_MODEL_ID,
-                contents=prompt,
-            )
-            text = getattr(response, "text", "") or ""
-            return text.strip()[:160] if text else "Benji is analyzing the current step."
-        except Exception as exc:
-            is_quota_error = _is_quota_or_rate_limit_error(exc)
-            if not is_quota_error or attempt == max_attempts:
-                logger.warning(
-                    "benji_thinking_generation_failed attempt=%s/%s quota_error=%s error=%s",
-                    attempt,
-                    max_attempts,
-                    is_quota_error,
-                    _clip_text(str(exc), 200),
-                )
-                return "Benji is processing the current step."
-            
-            delay = base_delay * (2 ** (attempt - 1))
-            await asyncio.sleep(delay)
-
-
 app = FastAPI()
 
 app.add_middleware(
@@ -177,7 +121,6 @@ session_meta: Dict[str, Dict] = {}  # session_id -> metadata for run outcome and
 
 # Gemini configuration - Computer Use model
 COMPUTER_USE_MODEL_ID = os.getenv("COMPUTER_USE_MODEL_ID", "gemini-2.5-computer-use-preview-10-2025")
-THINKING_SUMMARY_MODEL_ID = os.getenv("THINKING_SUMMARY_MODEL_ID", "gemini-2.5-flash")
 logger.info("startup model=%s", COMPUTER_USE_MODEL_ID)
 
 QA_WORKFLOW_SYSTEM_PROMPT = """
@@ -194,6 +137,21 @@ Your job:
 Important:
 - Be explicit about why the test passed or failed.
 - If failed, include "BUG DETECTED" in your thinking text.
+
+CRITICAL: For every turn, you MUST include a JSON object in your thinking with a "shorter_message" field.
+Format your thinking like this:
+{"shorter_message": "One sentence summary of what you're doing"}
+[Rest of your detailed thinking here]
+
+The shorter_message should be:
+- Maximum 1 sentence (10-15 words)
+- Natural and human-like (e.g., "Clicking on Projects to view all projects", "Typing project name in the form")
+- Specific about UI elements and actions
+- Written in present tense
+
+Example thinking format:
+{"shorter_message": "Clicking on the Projects link in the sidebar"}
+I can see the dashboard page has loaded successfully. I need to navigate to the Projects section to create a new project. I'll click on the "Projects" link in the left sidebar.
 """.strip()
 
 # Computer Use tool configuration (using built-in Computer Use tool)
@@ -275,6 +233,24 @@ async def frontend_endpoint(websocket: WebSocket):
         
         # Initialize Gemini client
         client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
+        
+        # Start background keepalive task to prevent WebSocket timeouts
+        keepalive_running = asyncio.Event()
+        keepalive_running.set()
+        
+        async def keepalive_task():
+            """Send periodic keepalive messages to prevent WebSocket timeout during long operations"""
+            while keepalive_running.is_set():
+                await asyncio.sleep(10)  # Send keepalive every 10 seconds
+                if keepalive_running.is_set():
+                    try:
+                        # Send to both WebSockets to keep them alive
+                        await websocket.send_json({"type": "keepalive"})
+                        await playwright_ws.send_json({"type": "keepalive"})
+                    except:
+                        break
+        
+        keepalive_task_handle = asyncio.create_task(keepalive_task())
         
         # Agent loop with conversation history
         import base64
@@ -364,9 +340,20 @@ Run the workflow now. End with either:
             
             # Store thinking content for this turn to use in action summaries
             turn_thinking_content = ""
+            shorter_message = ""
             if thoughts:
                 thinking_content = " ".join(thoughts)
                 turn_thinking_content = thinking_content
+                
+                # Extract shorter_message JSON field from thinking
+                import re
+                json_match = re.search(r'\{"shorter_message":\s*"([^"]+)"\}', thinking_content)
+                if json_match:
+                    shorter_message = json_match.group(1)
+                else:
+                    # Fallback to first sentence if no JSON found
+                    shorter_message = thinking_content.split('.')[0][:100] if thinking_content else "Processing..."
+                
                 logger.info(
                     "turn thinking session_id=%s turn=%s content=%s",
                     session_id,
@@ -378,22 +365,11 @@ Run the workflow now. End with either:
                     "content": thinking_content
                 })
                 
-                # Generate benji_thinking in background without blocking
-                async def send_benji_thinking_for_thought():
-                    try:
-                        benji_thinking = await _generate_benji_thinking(
-                            client,
-                            event_type="thinking",
-                            raw_text=thinking_content,
-                        )
-                        await websocket.send_json({
-                            "type": "benji_thinking",
-                            "content": benji_thinking,
-                        })
-                    except Exception:
-                        logger.exception("benji_thinking_generation_failed session_id=%s turn=%s source=thinking", session_id, turn_number)
-                
-                asyncio.create_task(send_benji_thinking_for_thought())
+                # Send shorter_message to benji_thinking bubble
+                await websocket.send_json({
+                    "type": "benji_thinking",
+                    "content": shorter_message,
+                })
                 
                 # Log thinking
                 session_logs[session_id].append({
@@ -484,30 +460,24 @@ Run the workflow now. End with either:
                     "args": dict(function_call.args),
                 })
                 
-                # Generate benji_thinking in background without blocking
-                async def send_benji_thinking_for_action():
-                    try:
-                        # Include agent's thinking context so Benji knows WHY this action is being taken
-                        action_context = f"Agent thinking: {turn_thinking_content}\n\nAction: {function_call.name} with args {json.dumps(dict(function_call.args), ensure_ascii=True)}"
-                        benji_action_summary = await _generate_benji_thinking(
-                            client,
-                            event_type="action",
-                            raw_text=action_context,
-                        )
-                        await websocket.send_json({
-                            "type": "benji_thinking",
-                            "content": benji_action_summary,
-                        })
-                    except Exception:
-                        logger.exception("benji_thinking_generation_failed session_id=%s turn=%s source=action", session_id, turn_number)
-                
-                asyncio.create_task(send_benji_thinking_for_action())
+                # Send Computer Use agent's thinking for this turn as benji_thinking
+                if turn_thinking_content:
+                    await websocket.send_json({
+                        "type": "benji_thinking",
+                        "content": turn_thinking_content,
+                    })
                 
                 # Send to Playwright client for execution
                 await playwright_ws.send_json({
                     "type": "execute_action",
                     "function": function_call.name,
                     "args": dict(function_call.args)
+                })
+                
+                # Send status update to frontend immediately (before waiting for Playwright)
+                await websocket.send_json({
+                    "type": "status",
+                    "content": f"Executing {function_call.name}..."
                 })
                 
                 # Wait for execution result
@@ -620,28 +590,19 @@ Run the workflow now. End with either:
             "content": final_message
         })
         
-        # Generate benji_thinking for final verdict
-        async def send_benji_thinking_for_completion():
-            try:
-                benji_verdict = await _generate_benji_thinking(
-                    client,
-                    event_type="completion",
-                    raw_text=final_message,
-                )
-                await websocket.send_json({
-                    "type": "benji_thinking",
-                    "content": benji_verdict,
-                })
-            except Exception:
-                logger.exception("benji_thinking_generation_failed session_id=%s source=completion", session_id)
-        
-        asyncio.create_task(send_benji_thinking_for_completion())
+        # Send final verdict as benji_thinking
+        await websocket.send_json({
+            "type": "benji_thinking",
+            "content": final_message,
+        })
         
     except WebSocketDisconnect:
+        keepalive_running.clear()
         if client_id in frontend_clients:
             del frontend_clients[client_id]
         logger.info("frontend_ws disconnected client_id=%s session_id=%s", client_id, session_id)
     except Exception as e:
+        keepalive_running.clear()
         logger.exception("agent_loop_error client_id=%s session_id=%s", client_id, session_id)
         error_message = str(e)
         if _is_quota_or_rate_limit_error(e):

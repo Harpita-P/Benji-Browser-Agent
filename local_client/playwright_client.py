@@ -70,9 +70,9 @@ async def main():
         print(f"✅ Browser launched")
         
         try:
-            # Connect to Cloud Run backend
+            # Connect to Cloud Run backend with increased ping timeout
             uri = f"{CLOUD_RUN_URL}/playwright"
-            async with websockets.connect(uri) as ws:
+            async with websockets.connect(uri, ping_interval=20, ping_timeout=60) as ws:
                 print(f"✅ Connected to agent brain")
                 
                 # Register with agent brain
@@ -89,7 +89,7 @@ async def main():
                     if message["type"] == "request_screenshot":
                         # Take screenshot
                         print("📸 Taking screenshot...")
-                        screenshot_bytes = await page.screenshot()
+                        screenshot_bytes = await page.screenshot(timeout=10000)  # 10 second timeout
                         screenshot_base64 = base64.b64encode(screenshot_bytes).decode()
                         
                         # Send back to Cloud Run
