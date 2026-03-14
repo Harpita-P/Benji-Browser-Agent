@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import { Play, Loader2, AlertCircle, Code, MessageSquare, Gamepad2, TrendingUp, X, Clock, Mic, MicOff } from "lucide-react";
+import { Play, Loader2, AlertCircle, Code, MessageSquare, Gamepad2, TrendingUp, X, Clock, Mic, MicOff, ArrowRight } from "lucide-react";
 
 interface Message {
   type: string;
@@ -546,6 +546,10 @@ export default function Home() {
               );
             }
             addLog("complete", message.content);
+            
+            // Reset session timer for next workflow run
+            setSessionStartTime(null);
+            setElapsedTime("0:00");
             setWorkflowRuns((prev) => [
               ...prev,
               {
@@ -1021,24 +1025,32 @@ export default function Home() {
       <header className="bg-[#FF0000] px-6 py-4 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-4">
           <span className="text-white font-semibold text-lg">
-            {appName || "My App"}
+            {appName || "My App"} Testing Workspace
           </span>
-          <span className="text-white/80 text-sm">
-            Benji will browse: {appUrl || "your app"}
-          </span>
+        </div>
+        <div className="flex items-center gap-4 flex-1 justify-center">
+          <div className="bg-white/20 border border-white/30 rounded-full px-4 py-2 backdrop-blur-sm">
+            <span className="text-white text-sm">
+              Benji will browse: {appUrl || "your app"}
+            </span>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <button
             onClick={() => setShowGitHubModal(true)}
-            className="px-4 py-2 text-sm bg-white/10 text-white rounded-md hover:bg-white/20 flex items-center gap-2 border border-white/20"
+            className="px-4 py-2 text-sm bg-black text-white rounded-md hover:bg-gray-900 flex items-center gap-2"
           >
             {isGitHubConnected ? (
               <>
                 <div className="w-2 h-2 rounded-full bg-green-400"></div>
                 Benji Connected to Github
+                <ArrowRight className="w-4 h-4" />
               </>
             ) : (
-              "Connect Benji to Github"
+              <>
+                Connect Benji to Github
+                <ArrowRight className="w-4 h-4" />
+              </>
             )}
           </button>
           <button
@@ -1050,9 +1062,9 @@ export default function Home() {
           </button>
           <button
             onClick={handleClose}
-            className="px-3 py-2 text-sm bg-white/10 text-white rounded-md hover:bg-white/20 flex items-center gap-2 border border-white/20"
+            className="px-4 py-2 text-sm bg-white text-black rounded-md hover:bg-gray-100 flex items-center gap-2"
           >
-            <X className="w-4 h-4" />
+            Close Workspace
           </button>
         </div>
       </header>
@@ -1159,11 +1171,11 @@ export default function Home() {
               }}
             />
             <div className="relative z-10">
-              <div className="inline-block max-w-full border border-red-700 bg-[#FF0000] px-3 py-2 shadow-sm">
+              <div className="border border-red-700 bg-[#FF0000] px-4 py-3 shadow-sm">
                 <div className="mb-1 inline-flex items-center bg-black/25 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
                   Active Test
                 </div>
-                <div className="truncate text-[15px] leading-6 font-medium tracking-[-0.01em] text-white">
+                <div className="text-[15px] leading-6 font-medium tracking-[-0.01em] text-white break-words">
                   {currentWorkflowName || "Waiting for next workflow test..."}
                 </div>
               </div>
@@ -1402,9 +1414,11 @@ export default function Home() {
                 </div>
               </div>
             ) : (
-              <div className="text-center text-gray-400">
-                <Loader2 className="w-12 h-12 mx-auto mb-4 animate-spin" />
-                <p>Launching browser...</p>
+              <div className="relative w-full h-full bg-white border border-gray-200 rounded-lg">
+                <div className="absolute top-4 left-4 flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-full border border-gray-300">
+                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                  <span className="text-xs font-medium text-gray-600">Live Browser View</span>
+                </div>
               </div>
             )}
           </div>
@@ -1543,7 +1557,6 @@ export default function Home() {
               <div className="px-3 py-1 bg-[#FF0000] text-white rounded-md text-xs font-medium">
                 {isRunning ? 'Running' : 'Complete'}
               </div>
-              <span className="text-xs text-gray-500">Gemini 2.5 Computer Use</span>
             </div>
           </div>
         </div>
