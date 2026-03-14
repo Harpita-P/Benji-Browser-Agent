@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import { Play, Loader2, AlertCircle, Code, MessageSquare, Gamepad2, TrendingUp, X, Clock, Mic, MicOff, ArrowRight, CheckCircle, MousePointer } from "lucide-react";
+import { Play, Loader2, AlertCircle, Code, MessageSquare, Gamepad2, TrendingUp, X, Clock, Mic, MicOff, ArrowRight, CheckCircle, MousePointer, ArrowUp } from "lucide-react";
 
 interface Message {
   type: string;
@@ -1128,20 +1128,21 @@ export default function Home() {
       )}
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden min-h-0 bg-gray-50 px-12 py-4" style={{
-        backgroundImage: 'linear-gradient(to right, #e5e7eb 1px, transparent 1px), linear-gradient(to bottom, #e5e7eb 1px, transparent 1px)',
+      <div className="flex-1 flex overflow-hidden min-h-0 px-12 pt-4 pb-12" style={{
+        backgroundColor: '#f0f7ff',
+        backgroundImage: 'linear-gradient(to right, #dbeafe 1px, transparent 1px), linear-gradient(to bottom, #dbeafe 1px, transparent 1px)',
         backgroundSize: '20px 20px'
       }}>
-        <div className="flex-1 flex gap-3 max-w-[1400px] mx-auto">
+        <div className="flex-1 flex gap-0 max-w-[1400px] mx-auto">
         {/* Left Sidebar - Sliding Panel Container */}
         <div className="w-[380px] relative overflow-hidden flex-shrink-0">
           {/* Default Panel */}
           <div 
-            className={`absolute inset-0 bg-[#f5f5f5] border border-gray-200 rounded-lg flex flex-col overflow-hidden shadow-sm transition-transform duration-500 ease-in-out ${
+            className={`absolute inset-0 bg-gray-50 border border-black flex flex-col overflow-hidden shadow-sm transition-transform duration-500 ease-in-out ${
               showAgentSteps ? '-translate-x-full' : 'translate-x-0'
             }`}
           >
-          <div className="p-4 border-b border-gray-200 flex-shrink-0">
+          <div className="p-4 border-b border-gray-200 flex-shrink-0 bg-gray-50">
             <div className="mb-3">
               <div className="flex items-center gap-3 bg-white border-2 border-gray-300 rounded-lg px-3 py-2 focus-within:border-[#FF0000] transition-colors">
                 <div className="flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-600 rounded-md font-bold text-sm flex-shrink-0">
@@ -1169,7 +1170,7 @@ export default function Home() {
                 <button
                   onClick={handleRun}
                   disabled={isRunning || !prompt.trim()}
-                  className="px-4 py-2 text-sm bg-[#FF0000] text-white rounded-md hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                  className="px-3 py-1.5 text-sm bg-[#FF0000] text-white rounded-md hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                 >
                   Run
                 </button>
@@ -1193,17 +1194,19 @@ export default function Home() {
               )}
             </button>
           </div>
-          <div className="bg-[#f9f9f9] p-4 flex-shrink-0">
-              <div className="border border-red-700 bg-[#FF0000] px-4 py-3 shadow-sm">
-                <div className="mb-1 inline-flex items-center bg-black/25 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
-                  Agent Task
-                </div>
-                <div className="text-[15px] leading-6 font-medium tracking-[-0.01em] text-white break-words">
-                  {currentWorkflowName || "Current test workflow will appear here"}
+          <div className="bg-gray-50 p-3 flex-shrink-0">
+              <div className="border border-red-700 bg-[#FF0000] px-3 py-2 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center w-8 h-8 bg-white text-red-600 rounded-md font-bold text-sm flex-shrink-0">
+                    {currentWorkflowName ? workflowCounter : <ArrowUp className="w-5 h-5" />}
+                  </div>
+                  <div className="text-sm font-medium tracking-[-0.01em] text-white break-words flex-1">
+                    {currentWorkflowName || "Run your first workflow"}
+                  </div>
                 </div>
               </div>
 
-              <div className="mt-4 flex flex-wrap gap-2 text-xs">
+              <div className="mt-3 flex flex-wrap gap-2 text-xs">
                 <div className="inline-flex items-center gap-2 rounded-full border border-slate-300/80 bg-white/85 px-3 py-1.5">
                   <span className="h-2 w-2 rounded-full bg-slate-500" />
                   <span className="text-slate-600">Workflows</span>
@@ -1284,7 +1287,6 @@ export default function Home() {
                   </div>
                 )}
               </div>
-            </div>
           </div>
           
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -1387,7 +1389,7 @@ export default function Home() {
 
           {/* Agent Steps Panel */}
           <div 
-            className={`absolute inset-0 bg-[#f5f5f5] border border-gray-200 rounded-lg flex flex-col overflow-hidden shadow-sm transition-transform duration-500 ease-in-out ${
+            className={`absolute inset-0 bg-gray-50 border border-black flex flex-col overflow-hidden shadow-sm transition-transform duration-500 ease-in-out ${
               showAgentSteps ? 'translate-x-0' : 'translate-x-full'
             }`}
           >
@@ -1471,12 +1473,12 @@ export default function Home() {
         {/* Right Side - Browser View */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Overall Browser Container with Border */}
-          <div className="flex-1 bg-white border-2 border-gray-300 rounded-lg shadow-sm overflow-hidden">
-            <div className="w-full h-full flex items-center justify-center overflow-auto">
+          <div className="flex-1 bg-white border border-l-0 border-black shadow-sm overflow-hidden flex flex-col">
+            <div className="w-full h-full flex items-center justify-center overflow-auto p-8">
             {screenshot ? (
-              <div className="w-full h-full">
+              <div className="max-w-5xl max-h-full mx-auto">
                 {/* macOS Browser Chrome */}
-                <div className="bg-white">
+                <div className="bg-white shadow-lg">
                   <div className="bg-gradient-to-b from-gray-100 to-gray-50 px-3 py-2 rounded-t-xl border-b border-gray-300 flex items-center gap-2">
                     <div className="flex gap-1.5">
                       <div className="w-3 h-3 rounded-full bg-red-400"></div>
@@ -1539,6 +1541,26 @@ export default function Home() {
                 </div>
               </div>
             )}
+            </div>
+          </div>
+
+          {/* Bottom Bar - Inside Border */}
+          <div className="border-t border-gray-200 px-4 py-3 bg-white flex items-center justify-between flex-shrink-0">
+            <div className="flex items-center gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-gray-400" />
+                <span className="text-gray-600">Session time: {elapsedTime}</span>
+              </div>
+              {turnNumber > 0 && (
+                <div className="text-gray-500">
+                  Turn {turnNumber}
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="px-3 py-1 bg-[#FF0000] text-white rounded-md text-xs font-medium">
+                {isRunning ? 'Running' : 'Complete'}
+              </div>
             </div>
           </div>
 
@@ -1658,26 +1680,6 @@ export default function Home() {
               )}
             </div>
           )}
-          
-          {/* Bottom Bar */}
-          <div className="border-t border-gray-200 px-4 py-3 bg-white flex items-center justify-between flex-shrink-0">
-            <div className="flex items-center gap-4 text-sm">
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-gray-400" />
-                <span className="text-gray-600">Session time: {elapsedTime}</span>
-              </div>
-              {turnNumber > 0 && (
-                <div className="text-gray-500">
-                  Turn {turnNumber}
-                </div>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="px-3 py-1 bg-[#FF0000] text-white rounded-md text-xs font-medium">
-                {isRunning ? 'Running' : 'Complete'}
-              </div>
-            </div>
-          </div>
         </div>
         </div>
       </div>
