@@ -1142,7 +1142,48 @@ export default function Home() {
               showAgentSteps ? '-translate-x-full' : 'translate-x-0'
             }`}
           >
-          <div className="p-4 border-b border-gray-200 flex-shrink-0 bg-gray-50">
+          <div className="bg-gray-50 flex-shrink-0 border-b border-gray-200">
+              <div className="bg-[#FF0000] px-6 py-5 shadow-sm">
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center justify-center w-12 h-12 bg-white text-red-600 rounded-md font-bold text-lg flex-shrink-0">
+                    {currentWorkflowName ? workflowCounter : <ArrowUp className="w-6 h-6" />}
+                  </div>
+                  <div className="text-lg font-semibold tracking-[-0.01em] text-white break-words flex-1">
+                    {currentWorkflowName || "Run your first workflow"}
+                  </div>
+                </div>
+              </div>
+
+              <div className="px-4 py-4 flex flex-wrap gap-2 text-xs">
+                <div className="inline-flex items-center gap-2 rounded-full border border-slate-300/80 bg-white/85 px-3 py-1.5">
+                  <span className="h-2 w-2 rounded-full bg-slate-500" />
+                  <span className="text-slate-600">Workflows</span>
+                  <span className="font-semibold text-slate-800">{workflowsTested}</span>
+                </div>
+                <div className="inline-flex items-center gap-2 rounded-full border border-green-300/90 bg-green-50/90 px-3 py-1.5">
+                  <span className="h-2 w-2 rounded-full bg-green-500" />
+                  <span className="text-green-700">Passed</span>
+                  <span className="font-semibold text-green-800">{passedWorkflows}</span>
+                </div>
+                <div className="inline-flex items-center gap-2 rounded-full border border-red-300/90 bg-red-50/90 px-3 py-1.5">
+                  <span className="h-2 w-2 rounded-full bg-red-500" />
+                  <span className="text-red-700">Failed</span>
+                  <span className="font-semibold text-red-800">{failedWorkflows}</span>
+                </div>
+                <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/90 bg-amber-50/90 px-3 py-1.5">
+                  <span className="h-2 w-2 rounded-full bg-amber-500" />
+                  <span className="text-amber-700">Bugs</span>
+                  <span className="font-semibold text-amber-800">{bugsFound}</span>
+                </div>
+                <div className="inline-flex items-center gap-2 rounded-full border border-blue-300/90 bg-blue-50/90 px-3 py-1.5">
+                  <span className="h-2 w-2 rounded-full bg-blue-500" />
+                  <span className="text-blue-700">Code Fixes</span>
+                  <span className="font-semibold text-blue-800">{codeFixCount}</span>
+                </div>
+              </div>
+          </div>
+          
+          <div className="p-4 pt-12 border-b border-gray-200 flex-shrink-0 bg-gray-50">
             <div className="mb-3">
               <div className="flex items-center gap-3 bg-white border-2 border-gray-300 rounded-lg px-3 py-2 focus-within:border-[#FF0000] transition-colors">
                 <div className="flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-600 rounded-md font-bold text-sm flex-shrink-0">
@@ -1194,81 +1235,36 @@ export default function Home() {
               )}
             </button>
           </div>
+
           <div className="bg-gray-50 p-3 flex-shrink-0">
-              <div className="border border-red-700 bg-[#FF0000] px-3 py-2 shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center w-8 h-8 bg-white text-red-600 rounded-md font-bold text-sm flex-shrink-0">
-                    {currentWorkflowName ? workflowCounter : <ArrowUp className="w-5 h-5" />}
-                  </div>
-                  <div className="text-sm font-medium tracking-[-0.01em] text-white break-words flex-1">
-                    {currentWorkflowName || "Run your first workflow"}
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                <div className="inline-flex items-center gap-2 rounded-full border border-slate-300/80 bg-white/85 px-3 py-1.5">
-                  <span className="h-2 w-2 rounded-full bg-slate-500" />
-                  <span className="text-slate-600">Workflows</span>
-                  <span className="font-semibold text-slate-800">{workflowsTested}</span>
-                </div>
-                <div className="inline-flex items-center gap-2 rounded-full border border-green-300/90 bg-green-50/90 px-3 py-1.5">
-                  <span className="h-2 w-2 rounded-full bg-green-500" />
-                  <span className="text-green-700">Passed</span>
-                  <span className="font-semibold text-green-800">{passedWorkflows}</span>
-                </div>
-                <div className="inline-flex items-center gap-2 rounded-full border border-red-300/90 bg-red-50/90 px-3 py-1.5">
-                  <span className="h-2 w-2 rounded-full bg-red-500" />
-                  <span className="text-red-700">Failed</span>
-                  <span className="font-semibold text-red-800">{failedWorkflows}</span>
-                </div>
-                <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/90 bg-amber-50/90 px-3 py-1.5">
-                  <span className="h-2 w-2 rounded-full bg-amber-500" />
-                  <span className="text-amber-700">Bugs</span>
-                  <span className="font-semibold text-amber-800">{bugsFound}</span>
-                </div>
-                <div className="inline-flex items-center gap-2 rounded-full border border-blue-300/90 bg-blue-50/90 px-3 py-1.5">
-                  <span className="h-2 w-2 rounded-full bg-blue-500" />
-                  <span className="text-blue-700">Code Fixes</span>
-                  <span className="font-semibold text-blue-800">{codeFixCount}</span>
-                </div>
-              </div>
-
               <div className="mt-5 space-y-2">
                 {workflowRuns.length === 0 ? (
                   <div className="text-xs text-gray-500">No workflows run yet.</div>
                 ) : (
                   <div className="space-y-2">
                     {workflowRuns.slice().reverse().map((run, index) => {
-                      const stickyColorVariants = [
-                        "border-[#e2d89b] bg-[#fff9d8]",
-                        "border-[#cfe2f8] bg-[#eaf4ff]",
-                        "border-[#ddd5f4] bg-[#f3efff]",
-                        "border-[#cde7d6] bg-[#ebf8ef]",
-                      ];
-                      const variantClass = stickyColorVariants[index % stickyColorVariants.length];
                       return (
                         <div
                           key={run.id}
-                          className={`border-2 ${variantClass} rounded-lg p-3 flex items-center justify-between hover:shadow-md transition-shadow`}
+                          className="border border-gray-200 bg-white rounded-md p-3 flex items-center justify-between hover:border-gray-300 transition-colors"
                         >
                           <div className="flex items-center gap-3 flex-1">
-                            <div className="flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-600 rounded-md font-bold text-sm flex-shrink-0">
+                            <div className="flex items-center justify-center w-7 h-7 bg-gray-100 text-gray-700 rounded font-semibold text-xs flex-shrink-0">
                               {run.id}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <div className="text-sm font-medium text-gray-800 truncate">{run.name}</div>
+                              <div className="text-sm font-medium text-gray-900 truncate">{run.name}</div>
                               <div className="text-xs text-gray-500 mt-0.5">
                                 {new Date(run.createdAt).toLocaleDateString()}
                               </div>
                             </div>
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0">
-                            <span className={`px-2 py-1 text-[10px] font-bold rounded ${run.status === "passed" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                            <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full ${run.status === "passed" ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
                               {run.status === "passed" ? "PASS" : "FAIL"}
                             </span>
                             {run.bugDetected && (
-                              <span className="bg-amber-100 px-2 py-1 text-[10px] font-semibold text-amber-800 rounded">
+                              <span className="bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-semibold text-amber-700 rounded-full">
                                 BUG
                               </span>
                             )}
@@ -1276,9 +1272,9 @@ export default function Home() {
                               onClick={() => {
                                 setShowAgentSteps(true);
                               }}
-                              className="px-3 py-1 text-xs bg-gray-800 text-white rounded hover:bg-gray-700 transition-colors"
+                              className="px-3 py-1 text-xs bg-gray-900 text-white rounded-md hover:bg-gray-800 transition-colors"
                             >
-                              View History
+                              View
                             </button>
                           </div>
                         </div>
@@ -1287,103 +1283,6 @@ export default function Home() {
                   </div>
                 )}
               </div>
-          </div>
-          
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {logs.map((log, index) => {
-              // Group thinking logs with their corresponding action card
-              if (log.type === 'thinking') {
-                return null;
-              }
-
-              // Find associated thinking log
-              const thinkingLog = index > 0 && logs[index - 1].type === 'thinking' ? logs[index - 1] : null;
-
-              if (log.stepNumber && log.stepTitle) {
-                // Check if this is a bug/failure step
-                const thinkingLower = thinkingLog?.content.toLowerCase() || '';
-                const isBugStep = thinkingLower.includes('test failed') || thinkingLower.includes('bug detected');
-                const isPassStep = thinkingLower.includes('test passed');
-                const bgColor = isBugStep ? 'bg-[#fff2f2]' : isPassStep ? 'bg-[#f0fff4]' : 'bg-white';
-                const borderColor = isBugStep ? 'border-red-200' : isPassStep ? 'border-green-200' : 'border-gray-200';
-                
-                return (
-                  <div key={index} className={`${bgColor} border ${borderColor} overflow-hidden`}>
-                    {/* Step Header */}
-                    <div className="p-6">
-                      <div className="flex items-start gap-3 mb-4">
-                        <div className="w-7 h-7 bg-[#eceff3] text-[#4b5563] font-semibold text-sm flex items-center justify-center flex-shrink-0 border border-[#d9dde3]">
-                          {log.stepNumber}
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-medium text-lg leading-tight tracking-[-0.01em] text-[#222]">{log.stepTitle}</h3>
-                        </div>
-                      </div>
-
-                      {/* Thinking/Explanation */}
-                      {thinkingLog && (
-                        <p className="text-sm leading-6 text-[#222] mb-4">
-                          {thinkingLog.content}
-                        </p>
-                      )}
-
-                      {/* ToolCall Section */}
-                      {log.functionName && (
-                        <div className="flex items-center gap-2 text-sm leading-tight">
-                          <span className="text-[#4b5563]">›</span>
-                          <span className="text-[#4b5563]">ToolCall</span>
-                          <code className="px-2 py-0.5 bg-[#eceff3] border border-[#d9dde3] text-[#111827] font-mono text-sm">
-                            {log.functionName}
-                          </code>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              }
-
-              // For status logs - show condensed
-              if (log.type === 'status') {
-                return (
-                  <div key={index} className="flex items-center gap-2 text-sm text-gray-500 px-2">
-                    <span>{getLogIcon(log.type)}</span>
-                    <span>{log.content}</span>
-                  </div>
-                );
-              }
-
-              // For error and complete logs
-              const reasonMatch = log.type === "complete" ? log.content.match(/Reason:\s*(.+)$/i) : null;
-              const summaryText = reasonMatch
-                ? log.content.replace(/\s*Reason:\s*.+$/i, "").trim()
-                : log.content;
-              const reasonText = reasonMatch?.[1]?.trim();
-
-              return (
-                <div
-                  key={index}
-                  className={`text-sm p-3 rounded-lg border ${getLogBackground(log.content)}`}
-                >
-                  <div className="flex items-start gap-2">
-                    <span className="text-base">{getLogIcon(log.type)}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="break-words text-sm">{summaryText}</p>
-                      {reasonText && (
-                        <div className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs text-amber-800">
-                          <span className="font-semibold">Reason:</span> {reasonText}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-            {logs.length === 0 && (
-              <div className="text-center text-gray-400 mt-8 text-sm">
-                Agent steps will appear here
-              </div>
-            )}
-            <div ref={logsEndRef} />
           </div>
           </div>
 
@@ -1394,8 +1293,19 @@ export default function Home() {
             }`}
           >
             <div className="p-4 border-b border-gray-200 bg-[#FF0000] flex-shrink-0">
-              <h2 className="text-white font-bold text-lg">Agent Steps</h2>
-              <p className="text-white/80 text-sm mt-1">Live execution in progress...</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-white font-bold text-lg">Agent Steps</h2>
+                  <p className="text-white/80 text-sm mt-1">Live execution in progress...</p>
+                </div>
+                <button
+                  onClick={() => setShowAgentSteps(false)}
+                  className="text-white hover:bg-white/20 rounded-md p-2 transition-colors"
+                  title="Back to main panel"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
             
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
