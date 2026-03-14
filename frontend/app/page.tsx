@@ -1281,45 +1281,46 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="bg-gray-50 p-3 flex-shrink-0">
-              <div className="mt-5 space-y-2">
+          <div className="bg-white border-t border-gray-200 p-4 flex-shrink-0">
+              <h3 className="text-sm font-bold text-gray-900 mb-3">Your Workflow Outcomes</h3>
+              <div className="space-y-2">
                 {workflowRuns.length === 0 ? (
                   <div className="text-xs text-gray-500">No workflows run yet.</div>
                 ) : (
                   <div className="space-y-2">
                     {workflowRuns.slice().reverse().map((run, index) => {
+                      const statusColor = run.status === "passed" ? "border-l-green-500 bg-green-50/30" : "border-l-red-500 bg-red-50/30";
                       return (
                         <div
                           key={run.id}
-                          className="border border-gray-200 bg-white rounded-md p-3 flex items-center justify-between hover:border-gray-300 transition-colors"
+                          className={`border-l-4 ${statusColor} border-y border-r border-gray-200 rounded-r-lg p-3 hover:shadow-sm transition-all`}
                         >
-                          <div className="flex items-center gap-3 flex-1">
-                            <div className="flex items-center justify-center w-7 h-7 bg-gray-100 text-gray-700 rounded font-semibold text-xs flex-shrink-0">
-                              {run.id}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="text-sm font-medium text-gray-900 truncate">{run.name}</div>
-                              <div className="text-xs text-gray-500 mt-0.5">
-                                Test #{run.id} • {run.status === "passed" ? "Passed" : "Failed"}{run.bugDetected ? " • Bug Detected" : ""}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3 flex-1">
+                              <div className="flex items-center justify-center w-7 h-7 bg-gray-100 text-gray-700 rounded font-semibold text-xs flex-shrink-0">
+                                {run.id}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-semibold text-gray-900 truncate">{run.name}</div>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className={`px-2 py-0.5 text-[10px] font-bold rounded ${run.status === "passed" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                                    {run.status === "passed" ? "PASS" : "FAIL"}
+                                  </span>
+                                  {run.bugDetected && (
+                                    <span className="bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700 rounded">
+                                      BUG
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full ${run.status === "passed" ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
-                              {run.status === "passed" ? "PASS" : "FAIL"}
-                            </span>
-                            {run.bugDetected && (
-                              <span className="bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-semibold text-amber-700 rounded-full">
-                                BUG
-                              </span>
-                            )}
                             <button
                               onClick={() => {
                                 setShowAgentSteps(true);
                               }}
-                              className="px-3 py-1 text-xs bg-gray-900 text-white rounded-md hover:bg-gray-800 transition-colors"
+                              className="ml-3 px-3 py-1.5 text-xs bg-black text-white rounded-md hover:bg-gray-800 transition-colors font-medium flex-shrink-0"
                             >
-                              View
+                              View Agent Logs
                             </button>
                           </div>
                         </div>
@@ -1341,7 +1342,7 @@ export default function Home() {
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-white font-bold text-lg">Agent Steps</h2>
-                  <p className="text-white/80 text-sm mt-1">Live execution in progress...</p>
+                  <p className="text-white/80 text-sm mt-1">See Benji&apos;s step-by-step reasoning</p>
                 </div>
                 <button
                   onClick={() => setShowAgentSteps(false)}
@@ -1428,10 +1429,10 @@ export default function Home() {
         {/* Right Side - Browser View */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Overall Browser Container with Border */}
-          <div className="flex-1 bg-white border border-l-0 border-black shadow-sm overflow-hidden flex flex-col">
+          <div className="flex-1 bg-white border border-l-0 border-black shadow-sm overflow-hidden flex flex-col relative">
             {/* Live Browser View Label - Always visible */}
             <div className="absolute top-4 left-4 z-30 flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-full border border-gray-300">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+              <div className={`w-2 h-2 rounded-full ${isRunning ? 'bg-green-500' : 'bg-red-500'}`}></div>
               <span className="text-xs font-medium text-gray-600">Live Browser View</span>
             </div>
             
@@ -1487,7 +1488,7 @@ export default function Home() {
                               top: `${Math.min(agentCursor.y + 3, 84)}%`,
                             }}
                           >
-                            <div className="text-[10px] uppercase tracking-wide text-red-100/95 font-semibold">Benji Thinking</div>
+                            <div className="text-xs text-red-100/95 font-semibold">Benji</div>
                             <div className="mt-0.5">{liveAgentUpdate}</div>
                           </div>
                         </div>
