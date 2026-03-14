@@ -469,7 +469,7 @@ Run the workflow now. End with either:
                     "args": dict(function_call.args),
                 })
                 try:
-                    benji_action_summary = _generate_benji_thinking(
+                    benji_action_summary = await _generate_benji_thinking(
                         client,
                         event_type="action",
                         raw_text=f"{function_call.name} args={json.dumps(dict(function_call.args), ensure_ascii=True)}",

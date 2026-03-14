@@ -72,23 +72,31 @@ const getCursorPositionFromAction = (
 ): { x: number; y: number } | null => {
   if (!functionName) return null;
 
+  // Try primary x/y coordinates first (used by click_at, type_text_at, hover_at)
   const x = normalizeToPercent(args?.x);
   const y = normalizeToPercent(args?.y);
   if (x !== null && y !== null) {
     return { x, y };
   }
 
-  if (functionName === "navigate") return { x: 20, y: 8 };
-  if (functionName === "open_web_browser") return { x: 50, y: 48 };
-  if (functionName === "scroll_document" || functionName === "scroll_at") return { x: 50, y: 72 };
-
+  // Try destination coordinates (used by drag operations)
   const destinationX = normalizeToPercent(args?.destination_x);
   const destinationY = normalizeToPercent(args?.destination_y);
   if (destinationX !== null && destinationY !== null) {
     return { x: destinationX, y: destinationY };
   }
 
-  return null;
+  // Fallback positions for actions without explicit coordinates
+  const fallbackPositions: Record<string, { x: number; y: number }> = {
+    navigate: { x: 20, y: 8 },
+    open_web_browser: { x: 50, y: 48 },
+    scroll_document: { x: 50, y: 72 },
+    scroll_at: { x: 50, y: 72 },
+    wait_5_seconds: { x: 50, y: 50 },
+    search: { x: 50, y: 15 },
+  };
+
+  return fallbackPositions[functionName] || { x: 50, y: 50 };
 };
 
 export default function Home() {
@@ -399,15 +407,11 @@ export default function Home() {
           }
           {
             const nextPosition = getCursorPositionFromAction(message.function_name, message.args);
-            if (nextPosition) {
-              setAgentCursor({
-                x: nextPosition.x,
-                y: nextPosition.y,
-                visible: true,
-              });
-            } else {
-              setAgentCursor((prev) => ({ ...prev, visible: true }));
-            }
+            setAgentCursor({
+              x: nextPosition?.x ?? 50,
+              y: nextPosition?.y ?? 50,
+              visible: true,
+            });
           }
           break;
 
