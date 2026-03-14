@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import { Play, Loader2, AlertCircle, Code, MessageSquare, Gamepad2, TrendingUp, X, Clock, Mic, MicOff, ArrowRight } from "lucide-react";
+import { Play, Loader2, AlertCircle, Code, MessageSquare, Gamepad2, TrendingUp, X, Clock, Mic, MicOff, ArrowRight, CheckCircle } from "lucide-react";
 
 interface Message {
   type: string;
@@ -131,6 +131,7 @@ export default function Home() {
   const [workflowRuns, setWorkflowRuns] = useState<WorkflowRunSummary[]>([]);
   const [codeFixCount, setCodeFixCount] = useState(0);
   const [fixedSessionIds, setFixedSessionIds] = useState<string[]>([]);
+  const [workflowCounter, setWorkflowCounter] = useState(1);
   const [liveAgentUpdate, setLiveAgentUpdate] = useState("Waiting for model updates...");
   const [agentCursor, setAgentCursor] = useState<{ x: number; y: number; visible: boolean }>({
     x: 50,
@@ -547,9 +548,10 @@ export default function Home() {
             }
             addLog("complete", message.content);
             
-            // Reset session timer for next workflow run
+            // Reset session timer for next workflow run and increment counter
             setSessionStartTime(null);
             setElapsedTime("0:00");
+            setWorkflowCounter(prev => prev + 1);
             setWorkflowRuns((prev) => [
               ...prev,
               {
@@ -1023,10 +1025,11 @@ export default function Home() {
     <div className="h-screen bg-white flex flex-col overflow-hidden">
       {/* Header */}
       <header className="bg-[#FF0000] px-6 py-4 flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-4">
-          <span className="text-white font-semibold text-lg">
-            {appName || "My App"} Testing Workspace
-          </span>
+        <div className="flex items-center gap-3">
+          <div className="bg-white/20 border-2 border-white/40 rounded-lg px-3 py-1.5 backdrop-blur-sm">
+            <span className="text-white font-bold text-sm">{appName || "My App"}</span>
+          </div>
+          <span className="text-white/90 text-sm font-medium">Testing Workspace</span>
         </div>
         <div className="flex items-center gap-4 flex-1 justify-center">
           <div className="bg-white/20 border border-white/30 rounded-full px-4 py-2 backdrop-blur-sm">
@@ -1042,9 +1045,8 @@ export default function Home() {
           >
             {isGitHubConnected ? (
               <>
-                <div className="w-2 h-2 rounded-full bg-green-400"></div>
+                <CheckCircle className="w-4 h-4" />
                 Benji Connected to Github
-                <ArrowRight className="w-4 h-4" />
               </>
             ) : (
               <>
@@ -1065,6 +1067,7 @@ export default function Home() {
             className="px-4 py-2 text-sm bg-white text-black rounded-md hover:bg-gray-100 flex items-center gap-2"
           >
             Close Workspace
+            <X className="w-4 h-4" />
           </button>
         </div>
       </header>
@@ -1125,23 +1128,27 @@ export default function Home() {
         {/* Left Sidebar - Steps */}
         <div className="w-[420px] bg-[#f5f5f5] border border-gray-200 rounded-lg flex flex-col overflow-hidden shadow-sm flex-shrink-0">
           <div className="p-6 border-b border-gray-200 flex-shrink-0">
-            <div className="flex items-center gap-3 mb-4">
-              <Mic className="w-5 h-5 text-[#FF0000]" />
-              <input
-                type="text"
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && !isRunning && handleRun()}
-                placeholder="Speak or type your UI workflow..."
-                className="flex-1 bg-white border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
-              />
-              <button
-                onClick={handleRun}
-                disabled={isRunning || !prompt.trim()}
-                className="px-4 py-2 text-sm bg-[#FF0000] text-white rounded-md hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Run
-              </button>
+            <div className="mb-4">
+              <div className="flex items-center gap-3 bg-white border-2 border-gray-300 rounded-lg px-4 py-3 focus-within:border-[#FF0000] transition-colors">
+                <div className="flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-600 rounded-md font-bold text-sm flex-shrink-0">
+                  {workflowCounter}
+                </div>
+                <input
+                  type="text"
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && !isRunning && handleRun()}
+                  placeholder="Type your UI workflow..."
+                  className="flex-1 bg-transparent text-base focus:outline-none"
+                />
+                <button
+                  onClick={handleRun}
+                  disabled={isRunning || !prompt.trim()}
+                  className="px-4 py-2 text-sm bg-[#FF0000] text-white rounded-md hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                >
+                  Run
+                </button>
+              </div>
             </div>
             <button 
               onClick={handleAnalyzeBugs}
