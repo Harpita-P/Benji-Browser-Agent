@@ -66,8 +66,8 @@ async def _generate_speech(text: str) -> str:
         # Configure the voice
         voice = texttospeech.VoiceSelectionParams(
             language_code="en-US",
-            name="en-US-Neural2-J",  # Natural female voice
-            ssml_gender=texttospeech.SsmlVoiceGender.FEMALE
+            name="en-US-Neural2-D",  # Natural male voice
+            ssml_gender=texttospeech.SsmlVoiceGender.MALE
         )
         
         # Configure audio output
@@ -421,10 +421,12 @@ Run the workflow now. End with either:
                     "content": thinking_content_display
                 })
                 
-                # Send current_update to benji_thinking bubble
+                # Send current_update to benji_thinking bubble with audio
+                audio_data = await _generate_speech(current_update)
                 await websocket.send_json({
                     "type": "benji_thinking",
                     "content": current_update,
+                    "audio": audio_data,
                 })
                 
                 # Log thinking
@@ -464,11 +466,13 @@ Run the workflow now. End with either:
                         "content": "Agent reported final test verdict"
                     })
                     
-                    # Send benji_thinking message for final verdict
+                    # Send benji_thinking message for final verdict with audio
                     if current_update:
+                        audio_data = await _generate_speech(current_update)
                         await websocket.send_json({
                             "type": "benji_thinking",
                             "content": current_update,
+                            "audio": audio_data,
                         })
                     
                     break
@@ -539,9 +543,11 @@ Run the workflow now. End with either:
                     }
                     benji_message = action_defaults.get(function_call.name, f"Executing {function_call.name}")
                 
+                audio_data = await _generate_speech(benji_message)
                 await websocket.send_json({
                     "type": "benji_thinking",
                     "content": benji_message,
+                    "audio": audio_data,
                 })
                 
                 # Send to Playwright client for execution
@@ -682,10 +688,12 @@ Run the workflow now. End with either:
             else:
                 verdict_current_update = f"Test failed - {failure_reason[:50]}" if failure_reason else "Test failed - bug detected"
         
-        # Send final verdict as benji_thinking
+        # Send final verdict as benji_thinking with audio
+        audio_data = await _generate_speech(verdict_current_update)
         await websocket.send_json({
             "type": "benji_thinking",
             "content": verdict_current_update,
+            "audio": audio_data,
         })
         
     except WebSocketDisconnect:

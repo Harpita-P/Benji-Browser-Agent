@@ -134,12 +134,15 @@ export default function Home() {
     y: 50,
     visible: false,
   });
+  const [isVoiceMuted, setIsVoiceMuted] = useState(false);
   const rotatingTitles = ["Super Engineer", "Teammate"];
   const [titleIndex, setTitleIndex] = useState(0);
   const [titleVisible, setTitleVisible] = useState(true);
   const wsRef = useRef<WebSocket | null>(null);
   const logsEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
+  const audioQueueRef = useRef<string[]>([]);
+  const isPlayingRef = useRef(false);
 
   const parseGitHubAnalysis = (result: any): GitHubAnalysisResult => {
     const analysisText = result?.analysis || result?.agent_response || "";
@@ -169,6 +172,54 @@ export default function Home() {
 
   const scrollToBottom = () => {
     logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const playAudioFromBase64 = async (base64Audio: string) => {
+    if (isVoiceMuted || !base64Audio) return;
+    
+    // Add to queue
+    audioQueueRef.current.push(base64Audio);
+    
+    // If already playing, the queue will be processed when current audio finishes
+    if (isPlayingRef.current) return;
+    
+    // Process queue
+    const processQueue = async () => {
+      while (audioQueueRef.current.length > 0) {
+        isPlayingRef.current = true;
+        const audioData = audioQueueRef.current.shift()!;
+        
+        try {
+          // Convert base64 to blob
+          const binaryString = atob(audioData);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          const blob = new Blob([bytes], { type: 'audio/mp3' });
+          const url = URL.createObjectURL(blob);
+          
+          // Play audio
+          const audio = new Audio(url);
+          await new Promise<void>((resolve, reject) => {
+            audio.onended = () => {
+              URL.revokeObjectURL(url);
+              resolve();
+            };
+            audio.onerror = (e) => {
+              URL.revokeObjectURL(url);
+              reject(e);
+            };
+            audio.play().catch(reject);
+          });
+        } catch (error) {
+          console.error('Audio playback error:', error);
+        }
+      }
+      isPlayingRef.current = false;
+    };
+    
+    processQueue();
   };
 
   useEffect(() => {
@@ -431,6 +482,10 @@ export default function Home() {
         case "benji_thinking":
           if (message.content) {
             setLiveAgentUpdate(message.content);
+            // Play audio if available
+            if ((message as any).audio) {
+              playAudioFromBase64((message as any).audio);
+            }
           }
           break;
 
@@ -1016,6 +1071,23 @@ export default function Home() {
               <>
                 <Code className="w-4 h-4" />
                 Analyze & Fix Bugs
+              </>
+            )}
+          </button>
+          <button
+            onClick={() => setIsVoiceMuted(!isVoiceMuted)}
+            className="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50 flex items-center gap-2"
+            title={isVoiceMuted ? "Unmute Benji's voice" : "Mute Benji's voice"}
+          >
+            {isVoiceMuted ? (
+              <>
+                <MicOff className="w-4 h-4" />
+                Voice Off
+              </>
+            ) : (
+              <>
+                <Mic className="w-4 h-4" />
+                Voice On
               </>
             )}
           </button>
