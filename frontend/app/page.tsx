@@ -317,6 +317,7 @@ export default function Home() {
     wsRef.current = ws;
 
     ws.onopen = () => {
+      addLog("status", "Computer Use Activated");
       ws.send(JSON.stringify({ 
         prompt: fullPrompt,
         client_id: "default"  // Must match CLIENT_ID in local playwright_client.py
@@ -429,6 +430,7 @@ export default function Home() {
     };
 
     ws.onclose = () => {
+      addLog("status", "Ready for next test.");
       wsRef.current = null;
       setIsRunning(false);
     };

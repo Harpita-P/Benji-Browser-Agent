@@ -123,6 +123,7 @@ async def main():
                                 text_to_type = args["text"]
                                 press_enter = args.get("press_enter", True)
                                 clear_before_typing = args.get("clear_before_typing", True)
+                                typing_delay_ms = int(args.get("typing_delay_ms", 90))
                                 
                                 actual_x = denormalize_x(args["x"], screen_width)
                                 actual_y = denormalize_y(args["y"], screen_height)
@@ -136,7 +137,7 @@ async def main():
                                     await page.keyboard.press("Meta+A")
                                     await page.keyboard.press("Backspace")
                                 
-                                await page.keyboard.type(text_to_type)
+                                await page.keyboard.type(text_to_type, delay=typing_delay_ms)
                                 
                                 if press_enter:
                                     await page.keyboard.press("Enter")
