@@ -12,6 +12,8 @@ interface Message {
   turn_number?: number;
   url?: string;
   action?: string;
+  function_name?: string;
+  args?: Record<string, any>;
 }
 
 interface GitHubAnalysisResult {
@@ -56,6 +58,39 @@ const extractIssueFromAnalysis = (analysisText: string): string => {
 
 const sanitizeBaseUrl = (url: string): string => url.replace(/\/+$/, "");
 
+const clampPercent = (value: number): number => Math.max(2, Math.min(98, value));
+
+const normalizeToPercent = (value: unknown): number | null => {
+  if (typeof value !== "number" || Number.isNaN(value)) return null;
+  const normalized = value <= 1 ? value * 100 : (value / 1000) * 100;
+  return clampPercent(normalized);
+};
+
+const getCursorPositionFromAction = (
+  functionName?: string,
+  args?: Record<string, any>,
+): { x: number; y: number } | null => {
+  if (!functionName) return null;
+
+  const x = normalizeToPercent(args?.x);
+  const y = normalizeToPercent(args?.y);
+  if (x !== null && y !== null) {
+    return { x, y };
+  }
+
+  if (functionName === "navigate") return { x: 20, y: 8 };
+  if (functionName === "open_web_browser") return { x: 50, y: 48 };
+  if (functionName === "scroll_document" || functionName === "scroll_at") return { x: 50, y: 72 };
+
+  const destinationX = normalizeToPercent(args?.destination_x);
+  const destinationY = normalizeToPercent(args?.destination_y);
+  if (destinationX !== null && destinationY !== null) {
+    return { x: destinationX, y: destinationY };
+  }
+
+  return null;
+};
+
 export default function Home() {
   const backendHttpBase = sanitizeBaseUrl(process.env.NEXT_PUBLIC_BACKEND_HTTP_URL || "http://localhost:8080");
   const backendWsBase = sanitizeBaseUrl(process.env.NEXT_PUBLIC_BACKEND_WS_URL || "ws://localhost:8080");
@@ -85,6 +120,12 @@ export default function Home() {
   const [workflowRuns, setWorkflowRuns] = useState<WorkflowRunSummary[]>([]);
   const [codeFixCount, setCodeFixCount] = useState(0);
   const [fixedSessionIds, setFixedSessionIds] = useState<string[]>([]);
+  const [liveAgentUpdate, setLiveAgentUpdate] = useState("Waiting for model updates...");
+  const [agentCursor, setAgentCursor] = useState<{ x: number; y: number; visible: boolean }>({
+    x: 50,
+    y: 50,
+    visible: false,
+  });
   const rotatingTitles = ["Super Engineer", "Teammate"];
   const [titleIndex, setTitleIndex] = useState(0);
   const [titleVisible, setTitleVisible] = useState(true);
@@ -212,7 +253,10 @@ export default function Home() {
       { bug: 'Input placeholder style' },
       { bug: 'Button alignment off' },
     ];
-    const highlightColors = ['bg-red-100/45 text-red-700/85', 'bg-gray-700/35 text-gray-900/90'];
+    const highlightColors = [
+      'bg-red-100/45 text-red-700/85',
+      'bg-white/70 text-black/65 shadow-[inset_0_0_0_9999px_rgba(0,0,0,0.14)]',
+    ];
     let highlightIndex = 0;
 
     const interval = setInterval(() => {
@@ -220,13 +264,13 @@ export default function Home() {
         const randomBug = bugs[Math.floor(Math.random() * bugs.length)];
         const color = highlightColors[highlightIndex % highlightColors.length];
         highlightIndex += 1;
-        let randomRow = Math.floor(Math.random() * 10);
-        let randomCol = Math.floor(Math.random() * 16);
+        let randomRow = Math.floor(Math.random() * 12);
+        let randomCol = Math.floor(Math.random() * 12);
 
-        // Keep second row unlit and avoid center area (rows 2-8, cols 3-13) where text is displayed
-        while (randomRow === 1 || (randomRow >= 2 && randomRow <= 8 && randomCol >= 3 && randomCol <= 13)) {
-          randomRow = Math.floor(Math.random() * 10);
-          randomCol = Math.floor(Math.random() * 16);
+        // Keep second row unlit and avoid center area (rows 3-9, cols 2-9) where text is displayed
+        while (randomRow === 1 || (randomRow >= 3 && randomRow <= 9 && randomCol >= 2 && randomCol <= 9)) {
+          randomRow = Math.floor(Math.random() * 12);
+          randomCol = Math.floor(Math.random() * 12);
         }
 
         const id = Date.now() + i;
@@ -311,6 +355,8 @@ export default function Home() {
     setTurnNumber(0);
     setAnalysisResult(null);
     setShowAgentThoughtLogs(false);
+    setLiveAgentUpdate("Standing by for next action...");
+    setAgentCursor({ x: 50, y: 50, visible: false });
     let runSessionId: string | null = null;
 
     const ws = new WebSocket(`${backendWsBase}/ws`);
@@ -351,6 +397,18 @@ export default function Home() {
           if (message.content) {
             addLog("action", message.content);
           }
+          {
+            const nextPosition = getCursorPositionFromAction(message.function_name, message.args);
+            if (nextPosition) {
+              setAgentCursor({
+                x: nextPosition.x,
+                y: nextPosition.y,
+                visible: true,
+              });
+            } else {
+              setAgentCursor((prev) => ({ ...prev, visible: true }));
+            }
+          }
           break;
 
         case "status":
@@ -362,6 +420,7 @@ export default function Home() {
         case "error":
           if (message.content) {
             addLog("error", message.content);
+            setLiveAgentUpdate("Hit an issue while testing this flow.");
           }
           break;
 
@@ -409,6 +468,7 @@ export default function Home() {
             ]);
             addLog("status", "Benji Test Lab is ready. Enter the next UI workflow test and click Run Workflow.");
             setPrompt("");
+            setLiveAgentUpdate("Test complete. Ready for next workflow.");
           }
           setIsRunning(false);
           break;
@@ -431,6 +491,8 @@ export default function Home() {
 
     ws.onclose = () => {
       addLog("status", "Ready for next test.");
+      setLiveAgentUpdate("Ready for next test.");
+      setAgentCursor((prev) => ({ ...prev, visible: false }));
       wsRef.current = null;
       setIsRunning(false);
     };
@@ -460,6 +522,8 @@ export default function Home() {
     setSessionId(null);
     setAnalysisResult(null);
     setShowAgentThoughtLogs(false);
+    setLiveAgentUpdate("Standing by for next action...");
+    setAgentCursor({ x: 50, y: 50, visible: false });
     setShowExecution(false);
     setSessionStartTime(null);
     setElapsedTime("0:00");
@@ -614,10 +678,10 @@ export default function Home() {
         {/* Main Content with Grid Background */}
         <div className="relative bg-gray-50">
           {/* Animated Grid Background */}
-          <div className="absolute inset-0 grid gap-0" style={{gridTemplateColumns: 'repeat(16, 1fr)', gridTemplateRows: 'repeat(10, minmax(80px, 1fr))'}}>
-            {Array.from({ length: 160 }).map((_, i) => {
-              const row = Math.floor(i / 16);
-              const col = i % 16;
+          <div className="absolute inset-0 grid gap-0" style={{gridTemplateColumns: 'repeat(12, 1fr)', gridTemplateRows: 'repeat(12, minmax(95px, 1fr))'}}>
+            {Array.from({ length: 144 }).map((_, i) => {
+              const row = Math.floor(i / 12);
+              const col = i % 12;
               const activeBug = activeBugs.find(b => b.row === row && b.col === col);
               
               return (
@@ -1170,11 +1234,43 @@ export default function Home() {
                     </div>
                   </div>
                   <div className="bg-white">
-                    <img
-                      src={screenshot}
-                      alt="Browser screenshot"
-                      className="w-full rounded-b-xl"
-                    />
+                    <div className="relative">
+                      <img
+                        src={screenshot}
+                        alt="Browser screenshot"
+                        className="w-full rounded-b-xl"
+                      />
+                      {agentCursor.visible && (
+                        <div className="pointer-events-none absolute inset-0">
+                          <div
+                            className="absolute z-20 transition-all duration-500 ease-out"
+                            style={{
+                              left: `${agentCursor.x}%`,
+                              top: `${agentCursor.y}%`,
+                              transform: "translate(-50%, -50%)",
+                            }}
+                          >
+                            <Image
+                              src="/agentic_cursor.png"
+                              alt="Agent cursor"
+                              width={44}
+                              height={44}
+                              className="h-11 w-11 object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)]"
+                            />
+                          </div>
+                          <div
+                            className="absolute z-10 max-w-[260px] rounded-xl border border-blue-300/80 bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-1.5 text-xs font-medium text-white shadow-lg transition-all duration-500 ease-out"
+                            style={{
+                              left: `${Math.min(agentCursor.x + 4, 78)}%`,
+                              top: `${Math.min(agentCursor.y + 3, 86)}%`,
+                            }}
+                          >
+                            <div className="text-[10px] uppercase tracking-wide text-blue-100/90">Benji Thinking</div>
+                            <div>{liveAgentUpdate}</div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

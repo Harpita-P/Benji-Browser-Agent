@@ -101,6 +101,36 @@ async def _generate_content_with_retry(
     raise RuntimeError(_friendly_quota_message())
 
 
+def _generate_benji_thinking(
+    client: genai.Client,
+    *,
+    event_type: str,
+    raw_text: str,
+) -> str:
+    prompt = f"""
+You are Benji Thinking. Convert internal agent updates into one short user-friendly live update.
+
+Rules:
+- Output a single sentence only.
+- Keep it under 14 words.
+- Present tense.
+- No markdown, no bullets.
+- Avoid mentioning models, tokens, or hidden reasoning.
+- If there is a bug/failure signal, mention that clearly and briefly.
+
+Event type: {event_type}
+Raw update:
+{raw_text}
+""".strip()
+
+    response = client.models.generate_content(
+        model=THINKING_SUMMARY_MODEL_ID,
+        contents=prompt,
+    )
+    text = getattr(response, "text", "") or ""
+    return text.strip()[:160] if text else "Benji is analyzing the current step."
+
+
 app = FastAPI()
 
 app.add_middleware(
@@ -121,6 +151,7 @@ session_meta: Dict[str, Dict] = {}  # session_id -> metadata for run outcome and
 
 # Gemini configuration - Computer Use model
 COMPUTER_USE_MODEL_ID = os.getenv("COMPUTER_USE_MODEL_ID", "gemini-2.5-computer-use-preview-10-2025")
+THINKING_SUMMARY_MODEL_ID = os.getenv("THINKING_SUMMARY_MODEL_ID", "gemini-2.0-flash")
 logger.info("startup model=%s", COMPUTER_USE_MODEL_ID)
 
 QA_WORKFLOW_SYSTEM_PROMPT = """
@@ -317,6 +348,18 @@ Run the workflow now. End with either:
                     "type": "thinking",
                     "content": thinking_content
                 })
+                try:
+                    benji_thinking = _generate_benji_thinking(
+                        client,
+                        event_type="thinking",
+                        raw_text=thinking_content,
+                    )
+                    await websocket.send_json({
+                        "type": "benji_thinking",
+                        "content": benji_thinking,
+                    })
+                except Exception:
+                    logger.exception("benji_thinking_generation_failed session_id=%s turn=%s source=thinking", session_id, turn_number)
                 
                 # Log thinking
                 session_logs[session_id].append({
@@ -402,8 +445,22 @@ Run the workflow now. End with either:
                 await websocket.send_json({
                     "type": "action",
                     "content": f"Executing: {function_call.name}",
-                    "turn_number": turn_number
+                    "turn_number": turn_number,
+                    "function_name": function_call.name,
+                    "args": dict(function_call.args),
                 })
+                try:
+                    benji_action_summary = _generate_benji_thinking(
+                        client,
+                        event_type="action",
+                        raw_text=f"{function_call.name} args={json.dumps(dict(function_call.args), ensure_ascii=True)}",
+                    )
+                    await websocket.send_json({
+                        "type": "benji_thinking",
+                        "content": benji_action_summary,
+                    })
+                except Exception:
+                    logger.exception("benji_thinking_generation_failed session_id=%s turn=%s source=action", session_id, turn_number)
                 
                 # Send to Playwright client for execution
                 await playwright_ws.send_json({
