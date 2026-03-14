@@ -132,6 +132,7 @@ export default function Home() {
   const [codeFixCount, setCodeFixCount] = useState(0);
   const [fixedSessionIds, setFixedSessionIds] = useState<string[]>([]);
   const [workflowCounter, setWorkflowCounter] = useState(1);
+  const [showAgentSteps, setShowAgentSteps] = useState(false);
   const [liveAgentUpdate, setLiveAgentUpdate] = useState("Waiting for model updates...");
   const [agentCursor, setAgentCursor] = useState<{ x: number; y: number; visible: boolean }>({
     x: 50,
@@ -436,6 +437,7 @@ export default function Home() {
     setShowAgentThoughtLogs(false);
     setLiveAgentUpdate("Waiting for model updates...");
     setAgentCursor({ x: 50, y: 50, visible: false });
+    setShowAgentSteps(true); // Toggle to Agent Steps panel
     let runSessionId: string | null = null;
 
     const ws = new WebSocket(`${backendWsBase}/ws`);
@@ -552,6 +554,7 @@ export default function Home() {
             setSessionStartTime(null);
             setElapsedTime("0:00");
             setWorkflowCounter(prev => prev + 1);
+            setShowAgentSteps(false); // Toggle back to default panel
             setWorkflowRuns((prev) => [
               ...prev,
               {
@@ -1024,17 +1027,17 @@ export default function Home() {
   return (
     <div className="h-screen bg-white flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="bg-[#FF0000] px-6 py-4 flex items-center justify-between flex-shrink-0">
+      <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-3">
-          <div className="bg-white/20 border-2 border-white/40 rounded-lg px-3 py-1.5 backdrop-blur-sm">
-            <span className="text-white font-bold text-sm">{appName || "My App"}</span>
+          <div className="bg-gray-100 border border-gray-300 rounded-lg px-3 py-1.5">
+            <span className="text-gray-900 font-bold text-sm">{appName || "My App"}</span>
           </div>
-          <span className="text-white/90 text-sm font-medium">Testing Workspace</span>
+          <span className="text-gray-600 text-sm font-medium">Testing Workspace</span>
         </div>
         <div className="flex items-center gap-4 flex-1 justify-center">
-          <div className="bg-white/20 border border-white/30 rounded-md px-4 py-2 backdrop-blur-sm flex items-center gap-2">
-            <MousePointer className="w-4 h-4 text-white" />
-            <span className="text-white text-sm">
+          <div className="bg-gray-50 border border-gray-300 rounded-md px-4 py-2 flex items-center gap-2">
+            <MousePointer className="w-4 h-4 text-gray-600" />
+            <span className="text-gray-700 text-sm">
               Benji will browse: {appUrl || "your app"}
             </span>
           </div>
@@ -1058,14 +1061,14 @@ export default function Home() {
           </button>
           <button
             onClick={() => setIsVoiceMuted(!isVoiceMuted)}
-            className="px-3 py-2 text-sm bg-white/10 text-white rounded-md hover:bg-white/20 flex items-center gap-2 border border-white/20"
+            className="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 flex items-center gap-2 border border-gray-300"
             title={isVoiceMuted ? "Unmute Benji's voice" : "Mute Benji's voice"}
           >
             {isVoiceMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
           </button>
           <button
             onClick={handleClose}
-            className="px-4 py-2 text-sm bg-white text-black rounded-md hover:bg-gray-100 flex items-center gap-2"
+            className="px-4 py-2 text-sm bg-gray-100 text-gray-900 rounded-md hover:bg-gray-200 flex items-center gap-2 border border-gray-300"
           >
             Close Workspace
             <X className="w-4 h-4" />
@@ -1125,12 +1128,22 @@ export default function Home() {
       )}
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden min-h-0 gap-6 p-6">
-        {/* Left Sidebar - Steps */}
-        <div className="w-[420px] bg-[#f5f5f5] border border-gray-200 rounded-lg flex flex-col overflow-hidden shadow-sm flex-shrink-0">
-          <div className="p-6 border-b border-gray-200 flex-shrink-0">
-            <div className="mb-4">
-              <div className="flex items-center gap-3 bg-white border-2 border-gray-300 rounded-lg px-4 py-3 focus-within:border-[#FF0000] transition-colors">
+      <div className="flex-1 flex overflow-hidden min-h-0 bg-gray-50 px-12 py-4" style={{
+        backgroundImage: 'linear-gradient(to right, #e5e7eb 1px, transparent 1px), linear-gradient(to bottom, #e5e7eb 1px, transparent 1px)',
+        backgroundSize: '20px 20px'
+      }}>
+        <div className="flex-1 flex gap-3 max-w-[1400px] mx-auto">
+        {/* Left Sidebar - Sliding Panel Container */}
+        <div className="w-[380px] relative overflow-hidden flex-shrink-0">
+          {/* Default Panel */}
+          <div 
+            className={`absolute inset-0 bg-[#f5f5f5] border border-gray-200 rounded-lg flex flex-col overflow-hidden shadow-sm transition-transform duration-500 ease-in-out ${
+              showAgentSteps ? '-translate-x-full' : 'translate-x-0'
+            }`}
+          >
+          <div className="p-4 border-b border-gray-200 flex-shrink-0">
+            <div className="mb-3">
+              <div className="flex items-center gap-3 bg-white border-2 border-gray-300 rounded-lg px-3 py-2 focus-within:border-[#FF0000] transition-colors">
                 <div className="flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-600 rounded-md font-bold text-sm flex-shrink-0">
                   {workflowCounter}
                 </div>
@@ -1180,16 +1193,7 @@ export default function Home() {
               )}
             </button>
           </div>
-          <div className="relative overflow-hidden border-b border-gray-200 bg-[#f9f9f9] p-6 flex-shrink-0">
-            <div
-              className="absolute inset-0 opacity-50"
-              style={{
-                backgroundImage:
-                  "linear-gradient(to right, rgba(99,102,241,0.16) 1px, transparent 1px), linear-gradient(to bottom, rgba(99,102,241,0.16) 1px, transparent 1px)",
-                backgroundSize: "18px 18px",
-              }}
-            />
-            <div className="relative z-10">
+          <div className="bg-[#f9f9f9] p-4 flex-shrink-0">
               <div className="border border-red-700 bg-[#FF0000] px-4 py-3 shadow-sm">
                 <div className="mb-1 inline-flex items-center bg-black/25 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
                   Agent Task
@@ -1227,53 +1231,63 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="mt-5">
+              <div className="mt-5 space-y-2">
                 {workflowRuns.length === 0 ? (
                   <div className="text-xs text-gray-500">No workflows run yet.</div>
                 ) : (
-                  <div className="overflow-x-auto pb-1">
-                    <div className="flex min-w-max gap-3 pr-1">
-                      {workflowRuns.slice().reverse().map((run, index) => {
-                        const stickyColorVariants = [
-                          "border-[#e2d89b] bg-[#fff9d8] text-[#665b27]",
-                          "border-[#cfe2f8] bg-[#eaf4ff] text-[#285075]",
-                          "border-[#ddd5f4] bg-[#f3efff] text-[#4f4278]",
-                          "border-[#cde7d6] bg-[#ebf8ef] text-[#2f5d41]",
-                        ];
-                        const variantClass = stickyColorVariants[index % stickyColorVariants.length];
-                        return (
+                  <div className="space-y-2">
+                    {workflowRuns.slice().reverse().map((run, index) => {
+                      const stickyColorVariants = [
+                        "border-[#e2d89b] bg-[#fff9d8]",
+                        "border-[#cfe2f8] bg-[#eaf4ff]",
+                        "border-[#ddd5f4] bg-[#f3efff]",
+                        "border-[#cde7d6] bg-[#ebf8ef]",
+                      ];
+                      const variantClass = stickyColorVariants[index % stickyColorVariants.length];
+                      return (
                         <div
                           key={run.id}
-                          className={`w-44 flex-shrink-0 border p-3 shadow-[3px_4px_0px_rgba(100,100,120,0.18)] ${variantClass}`}
+                          className={`border-2 ${variantClass} rounded-lg p-3 flex items-center justify-between hover:shadow-md transition-shadow`}
                         >
-                          <div className="mb-2 flex items-center justify-between">
-                            <span className="inline-flex items-center bg-black px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
-                              Test {run.id}
-                            </span>
-                            <span className={`px-1.5 py-0.5 text-[10px] font-bold ${run.status === "passed" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                          <div className="flex items-center gap-3 flex-1">
+                            <div className="flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-600 rounded-md font-bold text-sm flex-shrink-0">
+                              {run.id}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium text-gray-800 truncate">{run.name}</div>
+                              <div className="text-xs text-gray-500 mt-0.5">
+                                {new Date(run.createdAt).toLocaleDateString()}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <span className={`px-2 py-1 text-[10px] font-bold rounded ${run.status === "passed" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
                               {run.status === "passed" ? "PASS" : "FAIL"}
                             </span>
+                            {run.bugDetected && (
+                              <span className="bg-amber-100 px-2 py-1 text-[10px] font-semibold text-amber-800 rounded">
+                                BUG
+                              </span>
+                            )}
+                            <button
+                              onClick={() => {
+                                setShowAgentSteps(true);
+                              }}
+                              className="px-3 py-1 text-xs bg-gray-800 text-white rounded hover:bg-gray-700 transition-colors"
+                            >
+                              View History
+                            </button>
                           </div>
-                          <div className="line-clamp-3 text-xs leading-4">{run.name}</div>
-                          <div className="mt-1 text-[9px] leading-3 text-gray-600/80">
-                            Tested on: {new Date(run.createdAt).toLocaleDateString()}
-                          </div>
-                          {run.bugDetected && (
-                            <div className="mt-2 inline-block bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
-                              BUG FOUND
-                            </div>
-                          )}
                         </div>
-                        );
-                      })}
-                    </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
             </div>
           </div>
           
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {logs.map((log, index) => {
               // Group thinking logs with their corresponding action card
               if (log.type === 'thinking') {
@@ -1369,15 +1383,100 @@ export default function Home() {
             )}
             <div ref={logsEndRef} />
           </div>
+          </div>
+
+          {/* Agent Steps Panel */}
+          <div 
+            className={`absolute inset-0 bg-[#f5f5f5] border border-gray-200 rounded-lg flex flex-col overflow-hidden shadow-sm transition-transform duration-500 ease-in-out ${
+              showAgentSteps ? 'translate-x-0' : 'translate-x-full'
+            }`}
+          >
+            <div className="p-4 border-b border-gray-200 bg-[#FF0000] flex-shrink-0">
+              <h2 className="text-white font-bold text-lg">Agent Steps</h2>
+              <p className="text-white/80 text-sm mt-1">Live execution in progress...</p>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {logs.map((log, index) => {
+                // Group thinking logs with their corresponding action card
+                if (log.type === 'thinking') {
+                  return null;
+                }
+
+                // Find associated thinking log
+                const thinkingLog = index > 0 && logs[index - 1].type === 'thinking' ? logs[index - 1] : null;
+
+                if (log.stepNumber && log.stepTitle) {
+                  // Check if this is a bug/failure step
+                  const thinkingLower = thinkingLog?.content.toLowerCase() || '';
+                  const isBugStep = thinkingLower.includes('test failed') || thinkingLower.includes('bug detected');
+                  const isPassStep = thinkingLower.includes('test passed');
+                  const bgColor = isBugStep ? 'bg-[#fff2f2]' : isPassStep ? 'bg-[#f0fff4]' : 'bg-white';
+                  const borderColor = isBugStep ? 'border-red-200' : isPassStep ? 'border-green-200' : 'border-gray-200';
+                  
+                  return (
+                    <div key={index} className={`${bgColor} border ${borderColor} rounded-lg overflow-hidden`}>
+                      {/* Step Header */}
+                      <div className="p-4">
+                        <div className="flex items-start gap-3 mb-3">
+                          <div className="w-7 h-7 bg-[#eceff3] text-[#4b5563] font-semibold text-sm flex items-center justify-center flex-shrink-0 border border-[#d9dde3] rounded">
+                            {log.stepNumber}
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-medium text-base leading-tight tracking-[-0.01em] text-[#222]">{log.stepTitle}</h3>
+                          </div>
+                        </div>
+
+                        {/* Thinking/Explanation */}
+                        {thinkingLog && (
+                          <p className="text-sm leading-6 text-[#555] mb-3">
+                            {thinkingLog.content}
+                          </p>
+                        )}
+
+                        {/* ToolCall Section */}
+                        {log.functionName && (
+                          <div className="flex items-center gap-2 text-xs">
+                            <span className="text-[#4b5563]">›</span>
+                            <span className="text-[#4b5563]">ToolCall</span>
+                            <code className="px-2 py-0.5 bg-[#eceff3] border border-[#d9dde3] text-[#111827] font-mono text-xs rounded">
+                              {log.functionName}
+                            </code>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+
+                // For other log types (status, error, complete)
+                return (
+                  <div key={index} className="bg-white border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">{log.type === 'error' ? '❌' : log.type === 'complete' ? '✅' : 'ℹ️'}</span>
+                      <p className="text-sm text-gray-700">{log.content}</p>
+                    </div>
+                  </div>
+                );
+              })}
+              {logs.length === 0 && (
+                <div className="text-center text-gray-400 mt-8 text-sm">
+                  Agent steps will appear here as the workflow runs...
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Right Side - Browser View */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 flex items-center justify-center overflow-auto">
+          {/* Overall Browser Container with Border */}
+          <div className="flex-1 bg-white border-2 border-gray-300 rounded-lg shadow-sm overflow-hidden">
+            <div className="w-full h-full flex items-center justify-center overflow-auto">
             {screenshot ? (
               <div className="w-full h-full">
                 {/* macOS Browser Chrome */}
-                <div className="bg-white rounded-t-xl border border-gray-300 shadow-2xl">
+                <div className="bg-white">
                   <div className="bg-gradient-to-b from-gray-100 to-gray-50 px-3 py-2 rounded-t-xl border-b border-gray-300 flex items-center gap-2">
                     <div className="flex gap-1.5">
                       <div className="w-3 h-3 rounded-full bg-red-400"></div>
@@ -1440,6 +1539,7 @@ export default function Home() {
                 </div>
               </div>
             )}
+            </div>
           </div>
 
           {(isAnalyzing || analysisResult) && (
@@ -1578,6 +1678,7 @@ export default function Home() {
               </div>
             </div>
           </div>
+        </div>
         </div>
       </div>
     </div>

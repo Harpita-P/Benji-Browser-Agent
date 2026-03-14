@@ -61,40 +61,10 @@ async def _generate_speech(text: str) -> str:
     """
     Generate speech audio from text using Google Cloud Text-to-Speech.
     Returns base64-encoded audio data.
+    DISABLED: Returns empty string to disable TTS.
     """
-    try:
-        # Configure the voice
-        voice = texttospeech.VoiceSelectionParams(
-            language_code="en-US",
-            name="en-US-Neural2-D",  # Natural male voice
-            ssml_gender=texttospeech.SsmlVoiceGender.MALE
-        )
-        
-        # Configure audio output
-        audio_config = texttospeech.AudioConfig(
-            audio_encoding=texttospeech.AudioEncoding.MP3,
-            speaking_rate=1.1,  # Slightly faster for natural feel
-            pitch=0.0,
-        )
-        
-        # Build the synthesis request
-        synthesis_input = texttospeech.SynthesisInput(text=text)
-        
-        # Perform the text-to-speech request (synchronous call in async context)
-        response = await asyncio.to_thread(
-            tts_client.synthesize_speech,
-            input=synthesis_input,
-            voice=voice,
-            audio_config=audio_config
-        )
-        
-        # Encode audio to base64 for transmission
-        audio_base64 = base64.b64encode(response.audio_content).decode('utf-8')
-        return audio_base64
-        
-    except Exception as e:
-        logger.warning("tts_generation_failed error=%s", str(e))
-        return ""
+    # TTS disabled - return empty string
+    return ""
 
 
 async def _generate_content_with_retry(
