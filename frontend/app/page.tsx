@@ -132,6 +132,8 @@ export default function Home() {
   const [codeFixCount, setCodeFixCount] = useState(0);
   const [fixedSessionIds, setFixedSessionIds] = useState<string[]>([]);
   const [workflowCounter, setWorkflowCounter] = useState(1);
+  const [workflowCompleted, setWorkflowCompleted] = useState(false);
+  const [lastWorkflowStatus, setLastWorkflowStatus] = useState<"passed" | "failed" | null>(null);
   const [showAgentSteps, setShowAgentSteps] = useState(false);
   const [liveAgentUpdate, setLiveAgentUpdate] = useState("Waiting for model updates...");
   const [agentCursor, setAgentCursor] = useState<{ x: number; y: number; visible: boolean }>({
@@ -273,7 +275,7 @@ export default function Home() {
 
       recognitionRef.current.onresult = (event: any) => {
         const transcript = event.results[0][0].transcript;
-        setPrompt(prev => prev ? prev + ' ' + transcript : transcript);
+        setPrompt(transcript);
         setIsListening(false);
       };
 
@@ -398,12 +400,14 @@ export default function Home() {
   };
 
   const ensureWorkspace = (): boolean => {
+    console.log('ensureWorkspace called - appUrl:', appUrl, 'appName:', appName, 'isWorkspaceActive:', isWorkspaceActive);
     if (!appUrl.trim() || !appName.trim()) {
       alert("Please provide App Name and App URL to launch a workspace.");
       return false;
     }
 
     if (!isWorkspaceActive) {
+      console.log('Activating workspace...');
       setIsWorkspaceActive(true);
       setWorkspaceName(repoName.trim());
       setShowExecution(true);
@@ -423,8 +427,16 @@ export default function Home() {
 
   const runWorkflow = async (workflowText: string) => {
     const workflowName = workflowText.trim();
+    console.log('runWorkflow called with:', workflowName);
     if (!workflowName) return;
     const fullPrompt = `First, navigate to ${appUrl.trim()}. Then, ${workflowName}`;
+
+    // Increment counter when starting new workflow
+    if (workflowCompleted) {
+      setWorkflowCounter(prev => prev + 1);
+      setWorkflowCompleted(false);
+      setLastWorkflowStatus(null);
+    }
 
     setIsRunning(true);
     setShowExecution(true);
@@ -550,10 +562,11 @@ export default function Home() {
             }
             addLog("complete", message.content);
             
-            // Reset session timer for next workflow run and increment counter
+            // Reset session timer and mark workflow as completed
             setSessionStartTime(null);
             setElapsedTime("0:00");
-            setWorkflowCounter(prev => prev + 1);
+            setWorkflowCompleted(true);
+            setLastWorkflowStatus(isPassed ? "passed" : "failed");
             setShowAgentSteps(false); // Toggle back to default panel
             setWorkflowRuns((prev) => [
               ...prev,
@@ -1143,15 +1156,29 @@ export default function Home() {
             }`}
           >
           <div className="bg-gray-50 flex-shrink-0 border-b border-gray-200">
-              <div className="bg-[#FF0000] px-6 py-5 shadow-sm">
+              <div className="bg-[#FF0000] px-6 py-5 shadow-sm relative">
                 <div className="flex items-center gap-4">
-                  <div className="flex items-center justify-center w-12 h-12 bg-white text-red-600 rounded-md font-bold text-lg flex-shrink-0">
-                    {currentWorkflowName ? workflowCounter : <ArrowUp className="w-6 h-6" />}
+                  <div className="flex items-center justify-center w-12 h-12 rounded-md font-bold text-lg flex-shrink-0">
+                    {currentWorkflowName ? (workflowCompleted ? (
+                      <div className="w-10 h-10 bg-[#FF0000] rounded-full flex items-center justify-center">
+                        <CheckCircle className="w-6 h-6 text-white" />
+                      </div>
+                    ) : <div className="w-12 h-12 bg-white text-red-600 rounded-md flex items-center justify-center">{workflowCounter}</div>) : <div className="w-12 h-12 bg-white text-red-600 rounded-md flex items-center justify-center"><ArrowUp className="w-6 h-6" /></div>}
                   </div>
                   <div className="text-lg font-semibold tracking-[-0.01em] text-white break-words flex-1">
                     {currentWorkflowName || "Run your first workflow"}
                   </div>
                 </div>
+                {workflowCompleted && (
+                  <div className="absolute bottom-2 right-4 flex items-center gap-2">
+                    <span className="text-xs text-white/80 font-medium">Finished testing</span>
+                    {lastWorkflowStatus && (
+                      <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full ${lastWorkflowStatus === "passed" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                        {lastWorkflowStatus === "passed" ? "PASS" : "FAIL"}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="px-4 py-4 flex flex-wrap gap-2 text-xs">
@@ -1182,58 +1209,76 @@ export default function Home() {
                 </div>
               </div>
           </div>
-          
-          <div className="p-4 pt-12 border-b border-gray-200 flex-shrink-0 bg-gray-50">
-            <div className="mb-3">
-              <div className="flex items-center gap-3 bg-white border-2 border-gray-300 rounded-lg px-3 py-2 focus-within:border-[#FF0000] transition-colors">
-                <div className="flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-600 rounded-md font-bold text-sm flex-shrink-0">
-                  {workflowCounter}
+
+          {/* Analyze & Fix Bugs Section - Only show if workflow failed */}
+          {workflowCompleted && lastWorkflowStatus === "failed" && (
+            <div className="bg-gray-50 flex-shrink-0 border-b border-gray-200">
+              <button
+                onClick={handleAnalyzeBugs}
+                disabled={!sessionId || isAnalyzing || isRunning}
+                className="w-full bg-black px-6 py-5 shadow-sm hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center justify-center w-12 h-12 bg-white text-black rounded-md font-bold text-lg flex-shrink-0">
+                    {isAnalyzing ? <Loader2 className="w-6 h-6 animate-spin" /> : <Code className="w-6 h-6" />}
+                  </div>
+                  <div className="text-lg font-semibold tracking-[-0.01em] text-white break-words flex-1 text-left">
+                    {isAnalyzing ? "Analyzing bugs..." : "Analyze & Fix Bugs"}
+                  </div>
                 </div>
-                <input
-                  type="text"
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && !isRunning && handleRun()}
-                  placeholder="Type your UI workflow..."
-                  className="flex-1 bg-transparent text-base focus:outline-none"
-                />
-                <button
-                  onClick={toggleVoiceInput}
-                  className={`p-2 rounded-md transition-colors flex-shrink-0 ${
-                    isListening
-                      ? 'animate-pulse bg-red-100 text-[#FF0000]'
-                      : 'text-gray-500 hover:bg-gray-100'
-                  }`}
-                  title={isListening ? 'Stop recording' : 'Start voice input'}
-                >
-                  {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-                </button>
-                <button
-                  onClick={handleRun}
-                  disabled={isRunning || !prompt.trim()}
-                  className="px-3 py-1.5 text-sm bg-[#FF0000] text-white rounded-md hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-                >
-                  Run
-                </button>
-              </div>
+              </button>
             </div>
-            <button 
-              onClick={handleAnalyzeBugs}
-              disabled={!sessionId || isAnalyzing || isRunning}
-              className="w-full px-4 py-2 text-sm bg-black text-white rounded-md hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {isAnalyzing ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Analyzing...
-                </>
-              ) : (
-                <>
-                  <Code className="w-4 h-4" />
-                  Analyze & Fix Bugs
-                </>
+          )}
+          
+          <div className="p-6 pt-12 border-b border-gray-200 flex-shrink-0 bg-gray-50">
+            <div className="flex flex-col items-center gap-4">
+              <button
+                onClick={toggleVoiceInput}
+                disabled={isRunning}
+                className={`relative group transition-all duration-300 ${
+                  isListening
+                    ? 'scale-105'
+                    : 'hover:scale-105'
+                }`}
+                title={isListening ? 'Stop recording' : 'Speak your workflow'}
+              >
+                <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 ${
+                  isListening
+                    ? 'bg-[#FF0000] shadow-lg shadow-red-500/50 animate-pulse'
+                    : 'bg-white hover:bg-gray-50 shadow-md border border-gray-200'
+                }`}>
+                  <Image
+                    src="/agentic_cursor.png"
+                    alt="Voice input"
+                    width={48}
+                    height={48}
+                    className="w-12 h-12 object-contain"
+                  />
+                </div>
+              </button>
+              
+              <div className="text-center">
+                <p className="text-sm font-semibold text-gray-900">
+                  {isListening ? 'Listening...' : 'Speak Your Workflow'}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {isListening ? 'Click to stop recording' : 'Click the mic to start'}
+                </p>
+              </div>
+
+              {prompt && (
+                <div className="w-full bg-white border border-gray-200 rounded-lg p-3">
+                  <p className="text-sm text-gray-700">{prompt}</p>
+                  <button
+                    onClick={handleRun}
+                    disabled={isRunning}
+                    className="mt-3 w-full px-4 py-2 text-sm bg-[#FF0000] text-white rounded-md hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                  >
+                    {isRunning ? 'Running...' : 'Run Workflow'}
+                  </button>
+                </div>
               )}
-            </button>
+            </div>
           </div>
 
           <div className="bg-gray-50 p-3 flex-shrink-0">
@@ -1255,7 +1300,7 @@ export default function Home() {
                             <div className="flex-1 min-w-0">
                               <div className="text-sm font-medium text-gray-900 truncate">{run.name}</div>
                               <div className="text-xs text-gray-500 mt-0.5">
-                                {new Date(run.createdAt).toLocaleDateString()}
+                                Test #{run.id} • {run.status === "passed" ? "Passed" : "Failed"}{run.bugDetected ? " • Bug Detected" : ""}
                               </div>
                             </div>
                           </div>
@@ -1384,6 +1429,12 @@ export default function Home() {
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Overall Browser Container with Border */}
           <div className="flex-1 bg-white border border-l-0 border-black shadow-sm overflow-hidden flex flex-col">
+            {/* Live Browser View Label - Always visible */}
+            <div className="absolute top-4 left-4 z-30 flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-full border border-gray-300">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+              <span className="text-xs font-medium text-gray-600">Live Browser View</span>
+            </div>
+            
             <div className="w-full h-full flex items-center justify-center overflow-auto p-8">
             {screenshot ? (
               <div className="max-w-5xl max-h-full mx-auto">
@@ -1417,24 +1468,26 @@ export default function Home() {
                             }}
                           >
                             <div className="relative">
-                              <div className="absolute inset-0 -m-3 rounded-full border-4 border-pink-500/60 animate-pulse" />
+                              {/* Pink circular glow */}
+                              <div className="absolute inset-0 -m-6 rounded-full bg-pink-500/20 blur-md"></div>
+                              <div className="absolute inset-0 -m-4 rounded-full border border-pink-400/60 animate-pulse"></div>
                               <Image
                                 src="/agentic_cursor.png"
                                 alt="Agent cursor"
-                                width={44}
-                                height={44}
-                                className="h-11 w-11 object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)]"
+                                width={32}
+                                height={32}
+                                className="h-8 w-8 object-contain drop-shadow-[0_2px_6px_rgba(0,0,0,0.3)] relative z-10"
                               />
                             </div>
                           </div>
                           <div
-                            className="absolute z-10 max-w-[320px] rounded-xl border-2 border-black bg-gradient-to-r from-red-600 to-red-700 px-4 py-2.5 text-sm font-medium text-white shadow-2xl transition-all duration-500 ease-out"
+                            className="absolute z-10 max-w-[260px] rounded-lg border-2 border-black bg-gradient-to-r from-red-600 to-red-700 px-3 py-2 text-xs font-medium text-white shadow-xl transition-all duration-500 ease-out"
                             style={{
                               left: `${Math.min(agentCursor.x + 4, 75)}%`,
                               top: `${Math.min(agentCursor.y + 3, 84)}%`,
                             }}
                           >
-                            <div className="text-[11px] uppercase tracking-wide text-red-100/95 font-semibold">Benji Thinking</div>
+                            <div className="text-[10px] uppercase tracking-wide text-red-100/95 font-semibold">Benji Thinking</div>
                             <div className="mt-0.5">{liveAgentUpdate}</div>
                           </div>
                         </div>
@@ -1445,10 +1498,6 @@ export default function Home() {
               </div>
             ) : (
               <div className="relative w-full h-full bg-white border border-gray-200 rounded-lg">
-                <div className="absolute top-4 left-4 flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-full border border-gray-300">
-                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                  <span className="text-xs font-medium text-gray-600">Live Browser View</span>
-                </div>
               </div>
             )}
             </div>
