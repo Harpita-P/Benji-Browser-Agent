@@ -1095,9 +1095,11 @@ export default function Home() {
             alt="Benji" 
             className="h-7"
           />
-          <span className="text-gray-600 text-sm font-medium">Testing Workspace</span>
-          <div className="bg-[#FF0000] rounded-lg px-3 py-1.5">
-            <span className="text-white text-xs">{appName || "My App"}</span>
+          <div className="flex items-center gap-2 ml-8">
+            <span className="text-gray-600 text-sm font-medium">Testing Workspace</span>
+            <div className="bg-[#FF0000] rounded px-2 py-1">
+              <span className="text-white text-[10px]">{appName || "My App"}</span>
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-4 flex-1 justify-center">
@@ -1124,13 +1126,6 @@ export default function Home() {
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
-          </button>
-          <button
-            onClick={() => setIsVoiceMuted(!isVoiceMuted)}
-            className="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 flex items-center gap-2 border border-gray-300"
-            title={isVoiceMuted ? "Unmute Benji's voice" : "Mute Benji's voice"}
-          >
-            {isVoiceMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
           </button>
           <button
             onClick={handleClose}
@@ -1352,10 +1347,25 @@ export default function Home() {
                 <div className="flex-1 min-w-0">
                   <div className="bg-white border border-gray-200 rounded-3xl px-6 py-4 shadow-md relative">
                     <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2.5 w-5 h-5 bg-white border-l border-b border-gray-200 rotate-45"></div>
-                    <p className="text-base font-medium text-gray-900">
-                      {isListening ? 'Listening...' : 'Describe a new workflow you want Benji to validate'}
-                    </p>
+                    {prompt ? (
+                      <div>
+                        <p className="text-sm text-gray-500 mb-1">Workflow to validate:</p>
+                        <p className="text-base font-medium text-gray-900">{prompt}</p>
+                      </div>
+                    ) : (
+                      <p className="text-base font-medium text-gray-900">
+                        {isListening ? 'Listening...' : 'Describe a new workflow you want Benji to validate'}
+                      </p>
+                    )}
                   </div>
+                  {prompt && !isRunning && (
+                    <button
+                      onClick={handleRun}
+                      className="mt-3 w-full bg-[#FF0000] text-white px-6 py-3 rounded-xl font-medium hover:bg-red-600 transition-colors shadow-md"
+                    >
+                      Run Workflow
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
