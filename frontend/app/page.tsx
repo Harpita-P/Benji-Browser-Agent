@@ -1543,6 +1543,13 @@ export default function Home() {
               <span className="text-xs font-medium text-gray-600">Live Browser View</span>
             </div>
             
+            {/* Workflow Name Display - Center Top */}
+            {currentWorkflowName && isRunning && (
+              <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-30 bg-[#FF0000] px-4 py-2 rounded-lg shadow-md">
+                <span className="text-sm font-semibold text-white">{currentWorkflowName}</span>
+              </div>
+            )}
+            
             <div className="w-full h-full flex items-center justify-center overflow-auto p-8">
             {screenshot ? (
               <div className="max-w-5xl max-h-full mx-auto">
