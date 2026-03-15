@@ -1102,15 +1102,7 @@ export default function Home() {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-4 flex-1 justify-center">
-          <div className="bg-gray-50 border border-gray-300 rounded-md px-4 py-2 flex items-center gap-2">
-            <MousePointer className="w-4 h-4 text-gray-600" />
-            <span className="text-gray-700 text-sm">
-              Benji will browse: {appUrl || "your app"}
-            </span>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 ml-auto">
           <button
             onClick={() => setShowGitHubModal(true)}
             className="px-4 py-2 text-sm bg-black text-white rounded-md hover:bg-gray-900 flex items-center gap-2"
@@ -1118,11 +1110,11 @@ export default function Home() {
             {isGitHubConnected ? (
               <>
                 <CheckCircle className="w-4 h-4" />
-                Benji Connected to Github Repo
+                Agent Connected to Github Repo
               </>
             ) : (
               <>
-                Connect Benji to Github Repo
+                Connect Agent to Github Repo
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
@@ -1304,8 +1296,8 @@ export default function Home() {
                 <div className="flex items-center gap-4">
                   <div className="flex items-center justify-center w-12 h-12 rounded-md font-bold text-lg flex-shrink-0">
                     {currentWorkflowName ? (
-                      <div className="w-12 h-12 bg-white text-red-600 rounded-md flex items-center justify-center">{workflowCounter}</div>
-                    ) : <div className="w-12 h-12 bg-white text-red-600 rounded-md flex items-center justify-center"><MousePointer className="w-6 h-6" /></div>}
+                      <div className="w-12 h-12 bg-gray-100 text-red-600 rounded-md flex items-center justify-center">{workflowCounter}</div>
+                    ) : <div className="w-12 h-12 bg-gray-100 text-red-600 rounded-md flex items-center justify-center"><MousePointer className="w-6 h-6" /></div>}
                   </div>
                   <div className="text-lg font-semibold tracking-[-0.01em] text-white break-words flex-1">
                     {currentWorkflowName || "Run your first workflow"}
@@ -1322,25 +1314,6 @@ export default function Home() {
                   </div>
                 )}
               </div>
-
-          {/* Accessibility Suggestions Section - Only show if there are actual suggestions (not "No accessibility improvement recommendations!") */}
-          {accessibilitySuggestions.length > 0 && 
-           !accessibilitySuggestions.some(s => s.toLowerCase().includes('no accessibility improvement')) && (
-            <div className="bg-gray-50 flex-shrink-0 border-b border-gray-200">
-              <div className="bg-[#1a0033] px-6 py-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex-1">
-                    <p className="text-white font-semibold text-sm mb-1">
-                      Accessibility Suggestions
-                    </p>
-                    <div className="text-white/90 text-xs">
-                      {accessibilitySuggestions.join(' • ')}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Analyze & Fix Bugs Section - Only show if workflow failed */}
           {workflowCompleted && lastWorkflowStatus === "failed" && (
@@ -1389,6 +1362,27 @@ export default function Home() {
             </div>
           )}
 
+          {/* Accessibility Suggestions Section - Only show if there are actual suggestions (not "No accessibility improvement recommendations!") */}
+          {accessibilitySuggestions.length > 0 && 
+           !accessibilitySuggestions.some(s => s.toLowerCase().includes('no accessibility improvement')) && (
+            <div className="bg-gray-50 flex-shrink-0 border-b border-gray-200">
+              <div className="bg-[#1a0033] px-6 py-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex-1">
+                    <p className="text-white font-semibold text-sm mb-1">
+                      Accessibility Suggestions
+                    </p>
+                    <div className="text-white/90 text-xs">
+                      {accessibilitySuggestions.join(' • ')}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Stats Section - Hide when bug section is visible */}
+          {!(workflowCompleted && lastWorkflowStatus === "failed") && (
               <div className="px-4 py-4 flex flex-wrap gap-2 text-xs">
                 <div className="inline-flex items-center gap-2 rounded-full border border-slate-300/80 bg-white/85 px-3 py-1.5">
                   <span className="h-2 w-2 rounded-full bg-slate-500" />
@@ -1416,8 +1410,11 @@ export default function Home() {
                   <span className="font-semibold text-blue-800">{codeFixCount}</span>
                 </div>
               </div>
+          )}
           </div>
           
+          {/* Mic Section - Hide when bug section is visible */}
+          {!(workflowCompleted && lastWorkflowStatus === "failed") && (
           <div className="border-b border-gray-200 flex-shrink-0 bg-gray-50">
             <div className="p-5">
               <div className="flex items-center gap-5">
@@ -1481,6 +1478,7 @@ export default function Home() {
               </div>
             </div>
           </div>
+          )}
 
           <div className="bg-gray-50 p-4 flex-shrink-0">
               <div className="flex items-center gap-2 mb-3">
@@ -1717,11 +1715,6 @@ export default function Home() {
                 <Clock className="w-4 h-4 text-gray-400" />
                 <span className="text-gray-600">Session time: {elapsedTime}</span>
               </div>
-              {turnNumber > 0 && (
-                <div className="text-gray-500">
-                  Turn {turnNumber}
-                </div>
-              )}
             </div>
             <div className="flex items-center gap-2">
               <div className="px-3 py-1 bg-[#FF0000] text-white rounded-md text-xs font-medium">

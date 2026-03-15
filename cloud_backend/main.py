@@ -376,6 +376,36 @@ If you detect any e-commerce bugs, include specific details:
 - What was expected (e.g., "Expected cart to show 3 items")
 - What actually happened (e.g., "Cart shows 1 item")
 - Which product or action triggered the bug
+
+ICON FUNCTIONALITY BUG DETECTION:
+Check for icons that appear functional but don't actually work properly:
+
+NON-FUNCTIONAL ICON BUGS (CRITICAL):
+- Favorites/Like button: Click the icon but item is NOT added to favorites on the first try
+- Bookmark button: Click the icon but item is NOT bookmarked on the first try
+- Heart/Save icons: Click the icon but no visual feedback or action occurs
+- Share icons: Click the icon but share dialog doesn't appear
+- Filter/Sort icons: Click the icon but filtering/sorting doesn't apply
+- Toggle icons: Click the icon but state doesn't change (e.g., visibility toggle, theme toggle)
+
+WHAT TO CHECK:
+- Click the icon once and verify the expected action happens immediately
+- Check for visual feedback (icon state change, color change, animation)
+- Verify the action persists (e.g., item stays in favorites after page refresh)
+- Test if multiple clicks are needed when only one should be required
+
+EXAMPLES OF ICON BUGS:
+- Click favorite icon but product doesn't appear in favorites list
+- Click bookmark icon but page doesn't get bookmarked
+- Click heart icon twice before it actually saves the item
+- Click filter icon but products don't filter
+- Click toggle icon but setting doesn't change
+
+If you detect an icon functionality bug, report it with:
+- Which icon was clicked (e.g., "Favorites icon", "Bookmark button")
+- What was expected (e.g., "Expected item to be added to favorites")
+- What actually happened (e.g., "Item was not added to favorites on first click")
+- How many clicks were needed for it to work (if applicable)
 """.strip()
         
         qa_prompt = f"""
@@ -742,7 +772,7 @@ DO NOT use generic statements like "A bug was detected" - be specific about what
             logger.info("[ACCESSIBILITY DEBUG] Checking thought: %s", _clip_text(thought, 200))
             # Look for accessibility_suggestions pattern
             suggestions_match = re.search(r'accessibility_suggestions["\']?\s*:\s*\[([^\]]+)\]', thought, re.IGNORECASE)
-            if suggestions_match:
+            if suggestions_match and suggestions_match.group(1):
                 logger.info("[ACCESSIBILITY DEBUG] Found accessibility_suggestions match: %s", suggestions_match.group(0))
                 suggestions_str = suggestions_match.group(1)
                 # Parse individual suggestions
