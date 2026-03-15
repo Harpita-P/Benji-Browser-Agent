@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import { Play, Loader2, AlertCircle, Code, MessageSquare, Gamepad2, TrendingUp, X, Clock, Mic, MicOff, ArrowRight, CheckCircle, MousePointer, ArrowUp } from "lucide-react";
+import { Play, Loader2, AlertCircle, Code, MessageSquare, Gamepad2, TrendingUp, X, Clock, Mic, MicOff, ArrowRight, CheckCircle, MousePointer, ArrowUp, Eye } from "lucide-react";
 
 interface Message {
   type: string;
@@ -1093,12 +1093,12 @@ export default function Home() {
           <img 
             src="/benji_pixel.png" 
             alt="Benji" 
-            className="h-7"
+            className="h-16 relative -my-4"
           />
-          <div className="flex items-center gap-2 ml-8">
+          <div className="flex items-center gap-2 ml-24">
             <span className="text-gray-600 text-sm font-medium">Testing Workspace</span>
-            <div className="bg-[#FF0000] rounded px-2 py-1">
-              <span className="text-white text-[10px]">{appName || "My App"}</span>
+            <div className="bg-gray-100 rounded px-2.5 py-1">
+              <span className="text-[#FF0000] text-sm font-medium">{appName || "My App"}</span>
             </div>
           </div>
         </div>
@@ -1140,33 +1140,33 @@ export default function Home() {
       {/* GitHub Connection Modal */}
       {showGitHubModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowGitHubModal(false)}>
-          <div className="bg-white rounded-lg p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold mb-4">Connect to GitHub</h3>
+          <div className="bg-black rounded-lg p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold mb-4 text-white">Connect Via Github ADK MCP Tool</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">GitHub Owner</label>
+                <label className="block text-sm font-medium mb-1 text-white">GitHub Owner</label>
                 <input
                   type="text"
                   value={repoOwner}
                   onChange={(e) => setRepoOwner(e.target.value)}
                   placeholder="username or organization"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
+                  className="w-full px-3 py-2 bg-white border border-gray-300 text-black rounded-md focus:outline-none focus:ring-2 focus:ring-[#FF0000] placeholder-gray-400"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Repository Name</label>
+                <label className="block text-sm font-medium mb-1 text-white">Repository Name</label>
                 <input
                   type="text"
                   value={repoName}
                   onChange={(e) => setRepoName(e.target.value)}
                   placeholder="repository-name"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
+                  className="w-full px-3 py-2 bg-white border border-gray-300 text-black rounded-md focus:outline-none focus:ring-2 focus:ring-[#FF0000] placeholder-gray-400"
                 />
               </div>
               <div className="flex gap-3 justify-end">
                 <button
                   onClick={() => setShowGitHubModal(false)}
-                  className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+                  className="px-4 py-2 text-sm bg-white text-black rounded-md hover:bg-gray-100"
                 >
                   Cancel
                 </button>
@@ -1211,13 +1211,9 @@ export default function Home() {
               }`}>
                 <div className="flex items-center gap-4">
                   <div className="flex items-center justify-center w-12 h-12 rounded-md font-bold text-lg flex-shrink-0">
-                    {currentWorkflowName ? (workflowCompleted ? (
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                        lastWorkflowStatus === "passed" ? "bg-[#16a34a]" : "bg-[#FF0000]"
-                      }`}>
-                        <CheckCircle className="w-6 h-6 text-white" />
-                      </div>
-                    ) : <div className="w-12 h-12 bg-white text-red-600 rounded-md flex items-center justify-center">{workflowCounter}</div>) : <div className="w-12 h-12 bg-white text-red-600 rounded-md flex items-center justify-center"><MousePointer className="w-6 h-6" /></div>}
+                    {currentWorkflowName ? (
+                      <div className="w-12 h-12 bg-white text-red-600 rounded-md flex items-center justify-center">{workflowCounter}</div>
+                    ) : <div className="w-12 h-12 bg-white text-red-600 rounded-md flex items-center justify-center"><MousePointer className="w-6 h-6" /></div>}
                   </div>
                   <div className="text-lg font-semibold tracking-[-0.01em] text-white break-words flex-1">
                     {currentWorkflowName || "Run your first workflow"}
@@ -1234,6 +1230,25 @@ export default function Home() {
                   </div>
                 )}
               </div>
+
+          {/* Accessibility Suggestions Section - Only show if there are actual suggestions (not "No accessibility improvement recommendations!") */}
+          {accessibilitySuggestions.length > 0 && 
+           !accessibilitySuggestions.some(s => s.toLowerCase().includes('no accessibility improvement')) && (
+            <div className="bg-gray-50 flex-shrink-0 border-b border-gray-200">
+              <div className="bg-[#1a0033] px-6 py-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex-1">
+                    <p className="text-white font-semibold text-sm mb-1">
+                      Accessibility Suggestions
+                    </p>
+                    <div className="text-white/90 text-xs">
+                      {accessibilitySuggestions.join(' • ')}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
               <div className="px-4 py-4 flex flex-wrap gap-2 text-xs">
                 <div className="inline-flex items-center gap-2 rounded-full border border-slate-300/80 bg-white/85 px-3 py-1.5">
@@ -1371,36 +1386,11 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Accessibility Suggestions Section - Only show if there are actual suggestions (not "No accessibility improvement recommendations!") */}
-          {accessibilitySuggestions.length > 0 && 
-           !accessibilitySuggestions.some(s => s.toLowerCase().includes('no accessibility improvement')) && (
-            <div className="bg-gray-50 flex-shrink-0 border-b border-gray-200">
-              <div className="bg-[#0891b2] px-6 py-4">
-                <div className="flex items-start gap-4">
-                  <div className="flex items-center justify-center w-10 h-10 bg-white text-[#0891b2] rounded-md flex-shrink-0 mt-1">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-white font-semibold text-base mb-2">
-                      Accessibility Suggestions
-                    </p>
-                    <div className="space-y-2">
-                      {accessibilitySuggestions.map((suggestion, index) => (
-                        <div key={index} className="bg-white/10 rounded px-3 py-2">
-                          <p className="text-white/90 text-sm">{suggestion}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
           <div className="bg-gray-50 p-4 flex-shrink-0">
-              <h3 className="text-xs text-gray-500 uppercase tracking-wide mb-3">Workflow History</h3>
+              <div className="flex items-center gap-2 mb-3">
+                <Clock className="w-3.5 h-3.5 text-gray-500" />
+                <h3 className="text-xs text-gray-500 uppercase tracking-wide">Workflow History</h3>
+              </div>
               <div className="space-y-2">
                 {workflowRuns.length === 0 ? (
                   <div className="text-xs text-gray-400">No workflows run yet.</div>
@@ -1411,16 +1401,11 @@ export default function Home() {
                       return (
                         <div
                           key={run.id}
-                          className={`border-l-4 ${statusColor} border border-gray-200 rounded-md p-2.5 hover:bg-gray-50 transition-colors`}
+                          className={`bg-white border-l-4 ${statusColor} p-2 text-xs`}
                         >
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                              <div className="flex items-center justify-center w-6 h-6 bg-gray-100 text-gray-600 rounded text-xs flex-shrink-0">
-                                {run.id}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="text-sm text-gray-900 truncate">{run.name}</div>
-                              </div>
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-gray-900 truncate">{run.name}</div>
                             </div>
                             <div className="flex items-center gap-2 flex-shrink-0">
                               <span className={`px-1.5 py-0.5 text-[10px] rounded ${run.status === "passed" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>

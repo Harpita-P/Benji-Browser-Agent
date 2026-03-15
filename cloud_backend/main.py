@@ -334,6 +334,23 @@ IMPORTANT: Write suggestions in PLAIN TEXT without any markdown symbols, special
 Example formats:
 TEST PASSED. accessibility_suggestions: ['Make the Create button text darker for better contrast against yellow background']
 TEST PASSED. accessibility_suggestions: ['No accessibility improvement recommendations!']
+
+INCORRECT ASSOCIATION BUG DETECTION:
+While executing the workflow, also check for incorrect associations between images and their context:
+
+FOCUS: Check if images/pictures are correctly associated with their surrounding text and context.
+- CRITICAL: If you see an image with text nearby that does NOT refer to that image but refers to something else, flag this as an incorrect association bug
+- Check if image captions, labels, or descriptions match the actual image content
+- Look for mismatched context where an image appears in a section but the text describes a different image or concept
+- Verify that images are placed in the correct location relative to their references
+
+EXAMPLES OF INCORRECT ASSOCIATION BUGS:
+- A product image with a caption describing a different product
+- An image in a section about Feature A but the image shows Feature B
+- Text saying "see image above" but the image is below or missing
+- Multiple images where labels or references are swapped
+
+If you detect an incorrect association bug, include it in your bug report with details about what is mismatched
 """.strip()
         
         qa_prompt = f"""
