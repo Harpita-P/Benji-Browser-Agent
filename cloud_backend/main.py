@@ -233,7 +233,9 @@ async def frontend_endpoint(websocket: WebSocket):
         data = await websocket.receive_json()
         prompt = data["prompt"]
         client_id = data.get("client_id", "default")
-        logger.info("frontend_ws start client_id=%s prompt=%s", client_id, _clip_text(prompt, 180))
+        accessibility_enabled = data.get("accessibility_enabled", False)
+        logger.info("frontend_ws start client_id=%s prompt=%s accessibility_enabled=%s", client_id, _clip_text(prompt, 180), accessibility_enabled)
+        logger.info("[ACCESSIBILITY DEBUG] Received accessibility_enabled=%s from frontend", accessibility_enabled)
         
         frontend_clients[client_id] = websocket
         
@@ -307,8 +309,37 @@ async def frontend_endpoint(websocket: WebSocket):
             "session_id": session_id
         })
         
+        # Add accessibility instructions if enabled
+        accessibility_instructions = ""
+        if accessibility_enabled:
+            logger.info("[ACCESSIBILITY DEBUG] Adding accessibility evaluation instructions to prompt")
+            accessibility_instructions = """
+
+ACCESSIBILITY EVALUATION (ENABLED):
+While executing the workflow, also evaluate the UI for color contrast and visibility issues:
+
+1. LOW CONTRAST ISSUES:
+   - Check if buttons, links, or text have poor color contrast (e.g., yellow button with white text, light gray text on white background)
+   - Flag any elements that would be hard to see for users with low vision or on bright screens
+   - Look for text that blends into the background
+
+2. VISIBILITY PROBLEMS:
+   - Identify elements that are too faint, too small, or use colors that are hard to distinguish
+   - Check if important actions (buttons, links) are visually clear and easy to notice
+   - Note any UI elements that might be missed by elderly users or users with visual impairments
+
+CRITICAL: You MUST include accessibility_suggestions in your final verdict:
+- If you detect accessibility issues: accessibility_suggestions: ['suggestion 1', 'suggestion 2', ...]
+- If you find NO issues: accessibility_suggestions: ['No accessibility improvement recommendations!']
+
+Example formats:
+TEST PASSED. accessibility_suggestions: ['Make the Create button text darker for better contrast against yellow background', 'Increase the size of the delete icon - currently too small to see clearly']
+TEST PASSED. accessibility_suggestions: ['No accessibility improvement recommendations!']
+""".strip()
+        
         qa_prompt = f"""
 {QA_WORKFLOW_SYSTEM_PROMPT}
+{accessibility_instructions}
 
 Expected workflow to test:
 {prompt}
@@ -630,16 +661,49 @@ Run the workflow now. End with either:
             if not failure_reason:
                 failure_reason = "Workflow did not reach expected successful outcome."
 
+        # Extract accessibility suggestions from thinking logs if accessibility was enabled
+        accessibility_suggestions = []
+        if accessibility_enabled:
+            logger.info("[ACCESSIBILITY DEBUG] Extracting accessibility suggestions from thinking logs")
+            import re
+            for log_entry in reversed(session_logs.get(session_id, [])):
+                if log_entry.get("type") != "thinking":
+                    continue
+                thought = str(log_entry.get("content", "")).strip()
+                logger.info("[ACCESSIBILITY DEBUG] Checking thought: %s", _clip_text(thought, 200))
+                # Look for accessibility_suggestions pattern
+                suggestions_match = re.search(r'accessibility_suggestions["\']?\s*:\s*\[([^\]]+)\]', thought, re.IGNORECASE)
+                if suggestions_match:
+                    logger.info("[ACCESSIBILITY DEBUG] Found accessibility_suggestions match: %s", suggestions_match.group(0))
+                    suggestions_str = suggestions_match.group(1)
+                    # Parse individual suggestions
+                    suggestions = re.findall(r'["\']([^"\']+)["\']', suggestions_str)
+                    accessibility_suggestions = [s.strip() for s in suggestions if s.strip()]
+                    logger.info("[ACCESSIBILITY DEBUG] Parsed suggestions: %s", accessibility_suggestions)
+                    break
+            if not accessibility_suggestions:
+                logger.warning("[ACCESSIBILITY DEBUG] No accessibility suggestions found in any thinking logs")
+        
         final_message = (
             "TEST PASSED"
             if final_status == "passed"
             else f"TEST FAILED - BUG DETECTED. Reason: {failure_reason}"
         )
+        
+        # Add accessibility suggestions to final message if any were found
+        if accessibility_suggestions:
+            suggestions_str = str(accessibility_suggestions)
+            final_message += f". accessibility_suggestions: {suggestions_str}"
+            logger.info("[ACCESSIBILITY DEBUG] Added suggestions to final message: %s", suggestions_str)
+        elif accessibility_enabled:
+            logger.warning("[ACCESSIBILITY DEBUG] Accessibility was enabled but no suggestions were extracted")
+        
         logger.info(
-            "session complete session_id=%s status=%s turns=%s message=%s",
+            "session complete session_id=%s status=%s turns=%s accessibility_suggestions=%s message=%s",
             session_id,
             final_status,
             turn_number,
+            len(accessibility_suggestions),
             _clip_text(final_message),
         )
 
@@ -702,6 +766,7 @@ Run the workflow now. End with either:
             session_meta[session_id]["status"] = "failed"
             session_meta[session_id]["error"] = error_message
             session_meta[session_id]["bug_detected"] = False
+        keepalive_running.clear()
         await websocket.send_json({
             "type": "error",
             "content": error_message

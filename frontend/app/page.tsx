@@ -134,6 +134,9 @@ export default function Home() {
   const [workflowCounter, setWorkflowCounter] = useState(1);
   const [workflowCompleted, setWorkflowCompleted] = useState(false);
   const [lastWorkflowStatus, setLastWorkflowStatus] = useState<"passed" | "failed" | null>(null);
+  const [bugDescription, setBugDescription] = useState<string>("");
+  const [accessibilityEnabled, setAccessibilityEnabled] = useState(false);
+  const [accessibilitySuggestions, setAccessibilitySuggestions] = useState<string[]>([]);
   const [showAgentSteps, setShowAgentSteps] = useState(false);
   const [liveAgentUpdate, setLiveAgentUpdate] = useState("Waiting for model updates...");
   const [agentCursor, setAgentCursor] = useState<{ x: number; y: number; visible: boolean }>({
@@ -144,6 +147,7 @@ export default function Home() {
   const [isVoiceMuted, setIsVoiceMuted] = useState(false);
   const rotatingTitles = ["Super Engineer", "Teammate"];
   const [titleIndex, setTitleIndex] = useState(0);
+  const agentStepsScrollRef = useRef<HTMLDivElement>(null);
   const [titleVisible, setTitleVisible] = useState(true);
   const wsRef = useRef<WebSocket | null>(null);
   const logsEndRef = useRef<HTMLDivElement>(null);
@@ -368,6 +372,13 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
+  // Auto-scroll Agent Steps panel when new logs are added
+  useEffect(() => {
+    if (agentStepsScrollRef.current && showAgentSteps) {
+      agentStepsScrollRef.current.scrollTop = agentStepsScrollRef.current.scrollHeight;
+    }
+  }, [logs, showAgentSteps]);
+
   const addLog = (type: string, content: string) => {
     setLogs((prev) => {
       let stepNumber: number | undefined;
@@ -436,6 +447,8 @@ export default function Home() {
       setWorkflowCounter(prev => prev + 1);
       setWorkflowCompleted(false);
       setLastWorkflowStatus(null);
+      setBugDescription("");
+      setAccessibilitySuggestions([]);
     }
 
     setIsRunning(true);
@@ -457,9 +470,11 @@ export default function Home() {
 
     ws.onopen = () => {
       addLog("status", "Computer Use Activated");
+      console.log('[ACCESSIBILITY DEBUG] Sending to backend:', { accessibility_enabled: accessibilityEnabled });
       ws.send(JSON.stringify({ 
         prompt: fullPrompt,
-        client_id: "default"  // Must match CLIENT_ID in local playwright_client.py
+        client_id: "default",  // Must match CLIENT_ID in local playwright_client.py
+        accessibility_enabled: accessibilityEnabled
       }));
     };
 
@@ -554,6 +569,41 @@ export default function Home() {
                 "thinking",
                 "Final QA summary: TEST FAILED - BUG DETECTED — the workflow did not reach the expected successful outcome."
               );
+              
+              // Extract bug description if available
+              try {
+                const bugDescMatch = message.content.match(/short_bug_description["']?\s*:\s*["']([^"']+)["']/);
+                if (bugDescMatch && bugDescMatch[1]) {
+                  setBugDescription(bugDescMatch[1]);
+                } else {
+                  setBugDescription("A bug was detected during workflow execution.");
+                }
+              } catch (e) {
+                setBugDescription("A bug was detected during workflow execution.");
+              }
+              
+              // Extract accessibility suggestions if available
+              if (accessibilityEnabled) {
+                console.log('[ACCESSIBILITY DEBUG] Accessibility enabled, checking message:', message.content);
+                try {
+                  const accessibilityMatch = message.content.match(/accessibility_suggestions["']?\s*:\s*\[([^\]]+)\]/);
+                  console.log('[ACCESSIBILITY DEBUG] Regex match result:', accessibilityMatch);
+                  if (accessibilityMatch && accessibilityMatch[1]) {
+                    const suggestions = accessibilityMatch[1]
+                      .split(',')
+                      .map(s => s.trim().replace(/^["']|["']$/g, ''))
+                      .filter(s => s.length > 0);
+                    console.log('[ACCESSIBILITY DEBUG] Extracted suggestions:', suggestions);
+                    setAccessibilitySuggestions(suggestions);
+                  } else {
+                    console.log('[ACCESSIBILITY DEBUG] No accessibility_suggestions found in message');
+                  }
+                } catch (e) {
+                  console.error('[ACCESSIBILITY DEBUG] Error parsing accessibility suggestions:', e);
+                }
+              } else {
+                console.log('[ACCESSIBILITY DEBUG] Accessibility disabled, skipping extraction');
+              }
             } else {
               addLog(
                 "thinking",
@@ -567,6 +617,10 @@ export default function Home() {
             setElapsedTime("0:00");
             setWorkflowCompleted(true);
             setLastWorkflowStatus(isPassed ? "passed" : "failed");
+            if (isPassed) {
+              setBugDescription("");
+              setAccessibilitySuggestions([]);
+            }
             setShowAgentSteps(false); // Toggle back to default panel
             setWorkflowRuns((prev) => [
               ...prev,
@@ -1156,11 +1210,17 @@ export default function Home() {
             }`}
           >
           <div className="bg-gray-50 flex-shrink-0 border-b border-gray-200">
-              <div className="bg-[#FF0000] px-6 py-5 shadow-sm relative">
+              <div className={`px-6 py-5 shadow-sm relative transition-colors duration-300 ${
+                workflowCompleted && lastWorkflowStatus === "passed" 
+                  ? "bg-[#16a34a]" 
+                  : "bg-[#FF0000]"
+              }`}>
                 <div className="flex items-center gap-4">
                   <div className="flex items-center justify-center w-12 h-12 rounded-md font-bold text-lg flex-shrink-0">
                     {currentWorkflowName ? (workflowCompleted ? (
-                      <div className="w-10 h-10 bg-[#FF0000] rounded-full flex items-center justify-center">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                        lastWorkflowStatus === "passed" ? "bg-[#16a34a]" : "bg-[#FF0000]"
+                      }`}>
                         <CheckCircle className="w-6 h-6 text-white" />
                       </div>
                     ) : <div className="w-12 h-12 bg-white text-red-600 rounded-md flex items-center justify-center">{workflowCounter}</div>) : <div className="w-12 h-12 bg-white text-red-600 rounded-md flex items-center justify-center"><ArrowUp className="w-6 h-6" /></div>}
@@ -1213,115 +1273,200 @@ export default function Home() {
           {/* Analyze & Fix Bugs Section - Only show if workflow failed */}
           {workflowCompleted && lastWorkflowStatus === "failed" && (
             <div className="bg-gray-50 flex-shrink-0 border-b border-gray-200">
-              <button
-                onClick={handleAnalyzeBugs}
-                disabled={!sessionId || isAnalyzing || isRunning}
-                className="w-full bg-black px-6 py-5 shadow-sm hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center justify-center w-12 h-12 bg-white text-black rounded-md font-bold text-lg flex-shrink-0">
-                    {isAnalyzing ? <Loader2 className="w-6 h-6 animate-spin" /> : <Code className="w-6 h-6" />}
+              <div className="bg-black px-6 py-4">
+                <div className="flex items-start gap-4">
+                  <div className="flex items-center justify-center w-10 h-10 bg-white text-black rounded-md flex-shrink-0 mt-1">
+                    {isAnalyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Code className="w-5 h-5" />}
                   </div>
-                  <div className="text-lg font-semibold tracking-[-0.01em] text-white break-words flex-1 text-left">
-                    {isAnalyzing ? "Analyzing bugs..." : "Analyze & Fix Bugs"}
+                  <div className="flex-1">
+                    <p className="text-white font-semibold text-base mb-1">
+                      Benji wants to check your code &amp; fix a bug!
+                    </p>
+                    {bugDescription && (
+                      <p className="text-white/80 text-sm mb-3">
+                        {bugDescription}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={handleAnalyzeBugs}
+                        disabled={!sessionId || isAnalyzing || isRunning}
+                        className="px-4 py-1.5 text-sm bg-white text-black rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                      >
+                        {isAnalyzing ? 'Analyzing...' : 'Go'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setWorkflowCompleted(false);
+                          setLastWorkflowStatus(null);
+                          setBugDescription("");
+                        }}
+                        disabled={isAnalyzing || isRunning}
+                        className="px-4 py-1.5 text-sm bg-transparent text-white border border-white/30 rounded hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        Ignore
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </button>
+              </div>
             </div>
           )}
           
-          <div className="p-6 pt-12 border-b border-gray-200 flex-shrink-0 bg-gray-50">
-            <div className="flex flex-col items-center gap-4">
-              <button
-                onClick={toggleVoiceInput}
-                disabled={isRunning}
-                className={`relative group transition-all duration-300 ${
-                  isListening
-                    ? 'scale-105'
-                    : 'hover:scale-105'
-                }`}
-                title={isListening ? 'Stop recording' : 'Speak your workflow'}
-              >
-                <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 ${
-                  isListening
-                    ? 'bg-[#FF0000] shadow-lg shadow-red-500/50 animate-pulse'
-                    : 'bg-white hover:bg-gray-50 shadow-md border border-gray-200'
-                }`}>
-                  <Image
-                    src="/agentic_cursor.png"
-                    alt="Voice input"
-                    width={48}
-                    height={48}
-                    className="w-12 h-12 object-contain"
-                  />
+          <div className="border-b border-gray-200 flex-shrink-0 bg-gray-50">
+            <div className="p-4">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={toggleVoiceInput}
+                  disabled={isRunning}
+                  className={`flex-shrink-0 transition-all duration-200 ${
+                    isListening ? 'scale-105' : 'hover:scale-105'
+                  }`}
+                  title={isListening ? 'Stop recording' : 'Speak your workflow'}
+                >
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 ${
+                    isListening
+                      ? 'bg-[#FF0000] shadow-md'
+                      : 'bg-gray-100 hover:bg-gray-200 border border-gray-300'
+                  }`}>
+                    <Mic className={`w-5 h-5 ${
+                      isListening ? 'text-white' : 'text-gray-600'
+                    }`} />
+                  </div>
+                </button>
+                
+                <div className="flex-1 min-w-0">
+                  {prompt ? (
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm text-gray-900 truncate flex-1">{prompt}</p>
+                      <button
+                        onClick={handleRun}
+                        disabled={isRunning}
+                        className="px-3 py-1.5 text-xs bg-[#FF0000] text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+                      >
+                        {isRunning ? 'Running...' : 'Run'}
+                      </button>
+                    </div>
+                  ) : (
+                    <div>
+                      <p className="text-sm text-gray-900">
+                        {isListening ? 'Listening...' : 'Speak your workflow'}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {isListening ? 'Click to stop' : 'Click to start recording'}
+                      </p>
+                    </div>
+                  )}
                 </div>
-              </button>
-              
-              <div className="text-center">
-                <p className="text-sm font-semibold text-gray-900">
-                  {isListening ? 'Listening...' : 'Speak Your Workflow'}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {isListening ? 'Click to stop recording' : 'Click the mic to start'}
-                </p>
               </div>
-
-              {prompt && (
-                <div className="w-full bg-white border border-gray-200 rounded-lg p-3">
-                  <p className="text-sm text-gray-700">{prompt}</p>
-                  <button
-                    onClick={handleRun}
-                    disabled={isRunning}
-                    className="mt-3 w-full px-4 py-2 text-sm bg-[#FF0000] text-white rounded-md hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-                  >
-                    {isRunning ? 'Running...' : 'Run Workflow'}
-                  </button>
-                </div>
-              )}
             </div>
           </div>
 
-          <div className="bg-white border-t border-gray-200 p-4 flex-shrink-0">
-              <h3 className="text-sm font-bold text-gray-900 mb-3">Your Workflow Outcomes</h3>
+          {/* Accessibility Aware QA Section */}
+          <div className="border-b border-gray-200 flex-shrink-0 bg-gray-50">
+            <div className="bg-[#1e3a8a] px-6 py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center w-10 h-10 bg-white text-[#1e3a8a] rounded-md flex-shrink-0">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-white font-semibold text-sm">Accessibility Aware QA</p>
+                    <p className="text-white/70 text-xs mt-0.5">Check for usability & accessibility issues</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    const newValue = !accessibilityEnabled;
+                    console.log('[ACCESSIBILITY DEBUG] Toggle clicked, new value:', newValue);
+                    setAccessibilityEnabled(newValue);
+                  }}
+                  title={accessibilityEnabled ? 'Disable Accessibility QA' : 'Enable Accessibility QA'}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    accessibilityEnabled ? 'bg-green-500' : 'bg-gray-400'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      accessibilityEnabled ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Accessibility Suggestions Section - Show if suggestions exist */}
+          {accessibilitySuggestions.length > 0 && (
+            <div className="bg-gray-50 flex-shrink-0 border-b border-gray-200">
+              <div className="bg-[#0891b2] px-6 py-4">
+                <div className="flex items-start gap-4">
+                  <div className="flex items-center justify-center w-10 h-10 bg-white text-[#0891b2] rounded-md flex-shrink-0 mt-1">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-white font-semibold text-base mb-2">
+                      Accessibility Suggestions
+                    </p>
+                    <div className="space-y-2">
+                      {accessibilitySuggestions.map((suggestion, index) => (
+                        <div key={index} className="bg-white/10 rounded px-3 py-2">
+                          <p className="text-white/90 text-sm">{suggestion}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="bg-gray-50 p-4 flex-shrink-0">
+              <h3 className="text-xs text-gray-500 uppercase tracking-wide mb-3">Workflow History</h3>
               <div className="space-y-2">
                 {workflowRuns.length === 0 ? (
-                  <div className="text-xs text-gray-500">No workflows run yet.</div>
+                  <div className="text-xs text-gray-400">No workflows run yet.</div>
                 ) : (
                   <div className="space-y-2">
                     {workflowRuns.slice().reverse().map((run, index) => {
-                      const statusColor = run.status === "passed" ? "border-l-green-500 bg-green-50/30" : "border-l-red-500 bg-red-50/30";
+                      const statusColor = run.status === "passed" ? "border-l-green-500" : "border-l-red-500";
                       return (
                         <div
                           key={run.id}
-                          className={`border-l-4 ${statusColor} border-y border-r border-gray-200 rounded-r-lg p-3 hover:shadow-sm transition-all`}
+                          className={`border-l-4 ${statusColor} border border-gray-200 rounded-md p-2.5 hover:bg-gray-50 transition-colors`}
                         >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3 flex-1">
-                              <div className="flex items-center justify-center w-7 h-7 bg-gray-100 text-gray-700 rounded font-semibold text-xs flex-shrink-0">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                              <div className="flex items-center justify-center w-6 h-6 bg-gray-100 text-gray-600 rounded text-xs flex-shrink-0">
                                 {run.id}
                               </div>
                               <div className="flex-1 min-w-0">
-                                <div className="text-sm font-semibold text-gray-900 truncate">{run.name}</div>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <span className={`px-2 py-0.5 text-[10px] font-bold rounded ${run.status === "passed" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-                                    {run.status === "passed" ? "PASS" : "FAIL"}
-                                  </span>
-                                  {run.bugDetected && (
-                                    <span className="bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700 rounded">
-                                      BUG
-                                    </span>
-                                  )}
-                                </div>
+                                <div className="text-sm text-gray-900 truncate">{run.name}</div>
                               </div>
                             </div>
-                            <button
-                              onClick={() => {
-                                setShowAgentSteps(true);
-                              }}
-                              className="ml-3 px-3 py-1.5 text-xs bg-black text-white rounded-md hover:bg-gray-800 transition-colors font-medium flex-shrink-0"
-                            >
-                              View Agent Logs
-                            </button>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <span className={`px-1.5 py-0.5 text-[10px] rounded ${run.status === "passed" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                                {run.status === "passed" ? "PASS" : "FAIL"}
+                              </span>
+                              {run.bugDetected && (
+                                <span className="bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-700 rounded">
+                                  BUG
+                                </span>
+                              )}
+                              <button
+                                onClick={() => {
+                                  setShowAgentSteps(true);
+                                }}
+                                className="px-2.5 py-1 text-xs text-gray-700 hover:text-gray-900 transition-colors"
+                              >
+                                View Agent Logs
+                              </button>
+                            </div>
                           </div>
                         </div>
                       );
@@ -1354,7 +1499,7 @@ export default function Home() {
               </div>
             </div>
             
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            <div ref={agentStepsScrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
               {logs.map((log, index) => {
                 // Group thinking logs with their corresponding action card
                 if (log.type === 'thinking') {
