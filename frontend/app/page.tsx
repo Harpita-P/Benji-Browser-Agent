@@ -1250,6 +1250,53 @@ export default function Home() {
             </div>
           )}
 
+          {/* Analyze & Fix Bugs Section - Only show if workflow failed */}
+          {workflowCompleted && lastWorkflowStatus === "failed" && (
+            <div className="bg-gray-50 flex-shrink-0 border-b border-gray-200">
+              <div className="bg-white px-6 py-4 border-l-4 border-red-500">
+                <div className="flex items-start gap-4">
+                  <div className="flex items-center justify-center w-10 h-10 bg-red-100 text-red-600 rounded-md flex-shrink-0 mt-1">
+                    {isAnalyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <AlertCircle className="w-5 h-5" />}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-gray-900 font-semibold text-base mb-2">
+                      Bug found. Let Benji check & fix the code?
+                    </p>
+                    {bugDescription && (
+                      <div className="mb-3 inline-block bg-red-50 border border-red-200 rounded-md px-3 py-1.5">
+                        <p className="text-red-800 text-sm">
+                          {bugDescription}
+                        </p>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 mt-3">
+                      <button
+                        onClick={handleAnalyzeBugs}
+                        disabled={!sessionId || isAnalyzing || isRunning}
+                        className="px-4 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium flex items-center gap-2"
+                      >
+                        <CheckCircle className="w-4 h-4" />
+                        {isAnalyzing ? 'Analyzing...' : 'Accept'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setWorkflowCompleted(false);
+                          setLastWorkflowStatus(null);
+                          setBugDescription("");
+                        }}
+                        disabled={isAnalyzing || isRunning}
+                        className="px-4 py-2 text-sm bg-gray-100 text-gray-700 border border-gray-300 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                      >
+                        <X className="w-4 h-4" />
+                        Ignore
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
               <div className="px-4 py-4 flex flex-wrap gap-2 text-xs">
                 <div className="inline-flex items-center gap-2 rounded-full border border-slate-300/80 bg-white/85 px-3 py-1.5">
                   <span className="h-2 w-2 rounded-full bg-slate-500" />
@@ -1278,49 +1325,6 @@ export default function Home() {
                 </div>
               </div>
           </div>
-
-          {/* Analyze & Fix Bugs Section - Only show if workflow failed */}
-          {workflowCompleted && lastWorkflowStatus === "failed" && (
-            <div className="bg-gray-50 flex-shrink-0 border-b border-gray-200">
-              <div className="bg-black px-6 py-4">
-                <div className="flex items-start gap-4">
-                  <div className="flex items-center justify-center w-10 h-10 bg-white text-black rounded-md flex-shrink-0 mt-1">
-                    {isAnalyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Code className="w-5 h-5" />}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-white font-semibold text-base mb-1">
-                      Benji wants to check your code &amp; fix a bug!
-                    </p>
-                    {bugDescription && (
-                      <p className="text-white/80 text-sm mb-3">
-                        {bugDescription}
-                      </p>
-                    )}
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={handleAnalyzeBugs}
-                        disabled={!sessionId || isAnalyzing || isRunning}
-                        className="px-4 py-1.5 text-sm bg-white text-black rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
-                      >
-                        {isAnalyzing ? 'Analyzing...' : 'Go'}
-                      </button>
-                      <button
-                        onClick={() => {
-                          setWorkflowCompleted(false);
-                          setLastWorkflowStatus(null);
-                          setBugDescription("");
-                        }}
-                        disabled={isAnalyzing || isRunning}
-                        className="px-4 py-1.5 text-sm bg-transparent text-white border border-white/30 rounded hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      >
-                        Ignore
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
           
           <div className="border-b border-gray-200 flex-shrink-0 bg-gray-50">
             <div className="p-5">

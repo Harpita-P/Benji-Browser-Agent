@@ -351,6 +351,31 @@ EXAMPLES OF INCORRECT ASSOCIATION BUGS:
 - Multiple images where labels or references are swapped
 
 If you detect an incorrect association bug, include it in your bug report with details about what is mismatched
+
+E-COMMERCE UI BUG DETECTION:
+If the workflow involves e-commerce functionality, check for these common bugs:
+
+CART QUANTITY VALIDATION (CRITICAL):
+- When adding a product to cart, verify the cart quantity matches the quantity that was added
+- Example: If user adds 3 items, the cart should show 3 items, not 1 or a different number
+- Check if adding the same product multiple times correctly increments the quantity
+- Verify that the cart total reflects the correct number of items
+
+OTHER COMMON E-COMMERCE BUGS TO CHECK:
+- Price mismatch: Product price on listing page differs from cart or checkout price
+- Out of stock items: Items marked as "out of stock" can still be added to cart
+- Quantity limits: User can add more items than available stock or maximum allowed quantity
+- Cart persistence: Items disappear from cart after page refresh or navigation
+- Duplicate items: Same product appears multiple times in cart instead of incrementing quantity
+- Total calculation: Cart subtotal or total does not match sum of individual item prices
+- Discount application: Promo codes or discounts not applied correctly to cart total
+- Remove from cart: Clicking remove does not actually remove the item from cart
+- Update quantity: Changing quantity in cart does not update the price correctly
+
+If you detect any e-commerce bugs, include specific details:
+- What was expected (e.g., "Expected cart to show 3 items")
+- What actually happened (e.g., "Cart shows 1 item")
+- Which product or action triggered the bug
 """.strip()
         
         qa_prompt = f"""
@@ -620,6 +645,15 @@ Run the workflow now. End with either:
                     await websocket.send_json({
                         "type": "screenshot",
                         "data": screenshot_base64
+                    })
+                
+                # Send current URL to frontend for display
+                current_url = result.get("url", "")
+                if current_url:
+                    await websocket.send_json({
+                        "type": "turn",
+                        "turn_number": turn_number,
+                        "url": current_url
                     })
                 
                 # Build function response with screenshot and URL (required by Computer Use model)
