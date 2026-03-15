@@ -309,31 +309,39 @@ async def frontend_endpoint(websocket: WebSocket):
             "session_id": session_id
         })
         
-        # Add accessibility instructions (always enabled)
-        logger.info("[ACCESSIBILITY DEBUG] Adding accessibility evaluation instructions to prompt")
+        # Add accessibility instructions (TEMPORARILY DISABLED)
+        logger.info("[ACCESSIBILITY DEBUG] Accessibility evaluation DISABLED")
         accessibility_instructions = """
 
-ACCESSIBILITY EVALUATION (ENABLED):
-While executing the workflow, check ONLY for low contrast buttons:
-
-FOCUS: Check if any BUTTONS have low contrast between background and text.
-- CRITICAL: If you see ANY buttons with yellow, light yellow, light blue, light green, or other light colored backgrounds with white text, you MUST flag this as a low contrast issue
-- Yellow buttons with white text are ALWAYS a contrast problem
-- Light colored buttons with white text are ALWAYS a contrast problem
-- Only check BUTTONS - ignore other UI elements
-
-CRITICAL: You MUST include accessibility_suggestions in your final verdict:
-- If you find low contrast buttons: accessibility_suggestions: ['Make the [button name] button text darker for better contrast against [color] background']
-- If you find NO low contrast buttons: accessibility_suggestions: ['No accessibility improvement recommendations!']
-
-IMPORTANT: Write suggestions in PLAIN TEXT without any markdown symbols, special characters, or formatting.
-- Do NOT use: *, `, +, -, >, #, or any other markdown symbols
-- Do NOT use emojis or special Unicode characters
-- Write simple, clear sentences
-
-Example formats:
-TEST PASSED. accessibility_suggestions: ['Make the Create button text darker for better contrast against yellow background']
-TEST PASSED. accessibility_suggestions: ['No accessibility improvement recommendations!']
+ACCESSIBILITY EVALUATION (DISABLED):
+Accessibility checks are currently disabled. Do not evaluate accessibility or provide accessibility suggestions.
+"""
+        
+        # COMMENTED OUT - RE-ENABLE LATER
+        # accessibility_instructions = """
+        #
+        # ACCESSIBILITY EVALUATION (ENABLED):
+        # While executing the workflow, check ONLY for low contrast buttons:
+        #
+        # FOCUS: Check if any BUTTONS have low contrast between background and text.
+        # - CRITICAL: If you see ANY buttons with yellow, light yellow, light blue, light green, or other light colored backgrounds with white text, you MUST flag this as a low contrast issue
+        # - Yellow buttons with white text are ALWAYS a contrast problem
+        # - Light colored buttons with white text are ALWAYS a contrast problem
+        # - Only check BUTTONS - ignore other UI elements
+        #
+        # CRITICAL: You MUST include accessibility_suggestions in your final verdict:
+        # - If you find low contrast buttons: accessibility_suggestions: ['Make the [button name] button text darker for better contrast against [color] background']
+        # - If you find NO low contrast buttons: accessibility_suggestions: ['No accessibility improvement recommendations!']
+        #
+        # IMPORTANT: Write suggestions in PLAIN TEXT without any markdown symbols, special characters, or formatting.
+        # - Do NOT use: *, `, +, -, >, #, or any other markdown symbols
+        # - Do NOT use emojis or special Unicode characters
+        # - Write simple, clear sentences
+        #
+        # Example formats:
+        # TEST PASSED. accessibility_suggestions: ['Make the Create button text darker for better contrast against yellow background']
+        # TEST PASSED. accessibility_suggestions: ['No accessibility improvement recommendations!']
+        # """
 
 INCORRECT ASSOCIATION BUG DETECTION:
 While executing the workflow, also check for incorrect associations between images and their context:

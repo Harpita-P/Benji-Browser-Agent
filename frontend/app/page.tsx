@@ -1224,33 +1224,33 @@ export default function Home() {
       {/* GitHub Connection Modal */}
       {showGitHubModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowGitHubModal(false)}>
-          <div className="bg-black rounded-lg p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold mb-4 text-white">Connect Via Github ADK MCP Tool</h3>
+          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold mb-4 text-gray-900">Connect Via Github ADK MCP Tool</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1 text-white">GitHub Owner</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700">GitHub Owner</label>
                 <input
                   type="text"
                   value={repoOwner}
                   onChange={(e) => setRepoOwner(e.target.value)}
                   placeholder="username or organization"
-                  className="w-full px-3 py-2 bg-white border border-gray-300 text-black rounded-md focus:outline-none focus:ring-2 focus:ring-[#FF0000] placeholder-gray-400"
+                  className="w-full px-3 py-2 bg-white border border-gray-300 text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-[#FF0000] placeholder-gray-400"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1 text-white">Repository Name</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700">Repository Name</label>
                 <input
                   type="text"
                   value={repoName}
                   onChange={(e) => setRepoName(e.target.value)}
                   placeholder="repository-name"
-                  className="w-full px-3 py-2 bg-white border border-gray-300 text-black rounded-md focus:outline-none focus:ring-2 focus:ring-[#FF0000] placeholder-gray-400"
+                  className="w-full px-3 py-2 bg-white border border-gray-300 text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-[#FF0000] placeholder-gray-400"
                 />
               </div>
               <div className="flex gap-3 justify-end">
                 <button
                   onClick={() => setShowGitHubModal(false)}
-                  className="px-4 py-2 text-sm bg-white text-black rounded-md hover:bg-gray-100"
+                  className="px-4 py-2 text-sm bg-gray-100 text-gray-900 rounded-md hover:bg-gray-200 border border-gray-300"
                 >
                   Cancel
                 </button>
@@ -1300,7 +1300,7 @@ export default function Home() {
                     ) : <div className="w-12 h-12 bg-gray-100 text-red-600 rounded-md flex items-center justify-center"><MousePointer className="w-6 h-6" /></div>}
                   </div>
                   <div className="text-lg font-semibold tracking-[-0.01em] text-white break-words flex-1">
-                    {currentWorkflowName || "Run your first workflow"}
+                    {currentWorkflowName ? currentWorkflowName.charAt(0).toUpperCase() + currentWorkflowName.slice(1) : "Run your first workflow"}
                   </div>
                 </div>
                 {workflowCompleted && (
@@ -1635,8 +1635,8 @@ export default function Home() {
             
             {/* Workflow Name Display - Center Top */}
             {currentWorkflowName && isRunning && (
-              <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-30 bg-[#FF0000] px-4 py-2 rounded-lg shadow-md">
-                <span className="text-sm font-semibold text-white">{currentWorkflowName}</span>
+              <div className="absolute top-16 left-1/2 transform -translate-x-1/2 z-30 bg-[#FF0000] px-4 py-2 rounded-lg shadow-md">
+                <span className="text-sm font-semibold text-white">{currentWorkflowName.charAt(0).toUpperCase() + currentWorkflowName.slice(1)}</span>
               </div>
             )}
             
