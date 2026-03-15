@@ -309,31 +309,30 @@ async def frontend_endpoint(websocket: WebSocket):
             "session_id": session_id
         })
         
-        # Add accessibility instructions if enabled
-        accessibility_instructions = ""
-        if accessibility_enabled:
-            logger.info("[ACCESSIBILITY DEBUG] Adding accessibility evaluation instructions to prompt")
-            accessibility_instructions = """
+        # Add accessibility instructions (always enabled)
+        logger.info("[ACCESSIBILITY DEBUG] Adding accessibility evaluation instructions to prompt")
+        accessibility_instructions = """
 
 ACCESSIBILITY EVALUATION (ENABLED):
-While executing the workflow, also evaluate the UI for color contrast and visibility issues:
+While executing the workflow, check ONLY for low contrast buttons:
 
-1. LOW CONTRAST ISSUES:
-   - Check if buttons, links, or text have poor color contrast (e.g., yellow button with white text, light gray text on white background)
-   - Flag any elements that would be hard to see for users with low vision or on bright screens
-   - Look for text that blends into the background
-
-2. VISIBILITY PROBLEMS:
-   - Identify elements that are too faint, too small, or use colors that are hard to distinguish
-   - Check if important actions (buttons, links) are visually clear and easy to notice
-   - Note any UI elements that might be missed by elderly users or users with visual impairments
+FOCUS: Check if any BUTTONS have low contrast between background and text.
+- CRITICAL: If you see ANY buttons with yellow, light yellow, light blue, light green, or other light colored backgrounds with white text, you MUST flag this as a low contrast issue
+- Yellow buttons with white text are ALWAYS a contrast problem
+- Light colored buttons with white text are ALWAYS a contrast problem
+- Only check BUTTONS - ignore other UI elements
 
 CRITICAL: You MUST include accessibility_suggestions in your final verdict:
-- If you detect accessibility issues: accessibility_suggestions: ['suggestion 1', 'suggestion 2', ...]
-- If you find NO issues: accessibility_suggestions: ['No accessibility improvement recommendations!']
+- If you find low contrast buttons: accessibility_suggestions: ['Make the [button name] button text darker for better contrast against [color] background']
+- If you find NO low contrast buttons: accessibility_suggestions: ['No accessibility improvement recommendations!']
+
+IMPORTANT: Write suggestions in PLAIN TEXT without any markdown symbols, special characters, or formatting.
+- Do NOT use: *, `, +, -, >, #, or any other markdown symbols
+- Do NOT use emojis or special Unicode characters
+- Write simple, clear sentences
 
 Example formats:
-TEST PASSED. accessibility_suggestions: ['Make the Create button text darker for better contrast against yellow background', 'Increase the size of the delete icon - currently too small to see clearly']
+TEST PASSED. accessibility_suggestions: ['Make the Create button text darker for better contrast against yellow background']
 TEST PASSED. accessibility_suggestions: ['No accessibility improvement recommendations!']
 """.strip()
         
@@ -661,28 +660,27 @@ Run the workflow now. End with either:
             if not failure_reason:
                 failure_reason = "Workflow did not reach expected successful outcome."
 
-        # Extract accessibility suggestions from thinking logs if accessibility was enabled
+        # Extract accessibility suggestions from thinking logs (always enabled)
         accessibility_suggestions = []
-        if accessibility_enabled:
-            logger.info("[ACCESSIBILITY DEBUG] Extracting accessibility suggestions from thinking logs")
-            import re
-            for log_entry in reversed(session_logs.get(session_id, [])):
-                if log_entry.get("type") != "thinking":
-                    continue
-                thought = str(log_entry.get("content", "")).strip()
-                logger.info("[ACCESSIBILITY DEBUG] Checking thought: %s", _clip_text(thought, 200))
-                # Look for accessibility_suggestions pattern
-                suggestions_match = re.search(r'accessibility_suggestions["\']?\s*:\s*\[([^\]]+)\]', thought, re.IGNORECASE)
-                if suggestions_match:
-                    logger.info("[ACCESSIBILITY DEBUG] Found accessibility_suggestions match: %s", suggestions_match.group(0))
-                    suggestions_str = suggestions_match.group(1)
-                    # Parse individual suggestions
-                    suggestions = re.findall(r'["\']([^"\']+)["\']', suggestions_str)
-                    accessibility_suggestions = [s.strip() for s in suggestions if s.strip()]
-                    logger.info("[ACCESSIBILITY DEBUG] Parsed suggestions: %s", accessibility_suggestions)
-                    break
-            if not accessibility_suggestions:
-                logger.warning("[ACCESSIBILITY DEBUG] No accessibility suggestions found in any thinking logs")
+        logger.info("[ACCESSIBILITY DEBUG] Extracting accessibility suggestions from thinking logs")
+        import re
+        for log_entry in reversed(session_logs.get(session_id, [])):
+            if log_entry.get("type") != "thinking":
+                continue
+            thought = str(log_entry.get("content", "")).strip()
+            logger.info("[ACCESSIBILITY DEBUG] Checking thought: %s", _clip_text(thought, 200))
+            # Look for accessibility_suggestions pattern
+            suggestions_match = re.search(r'accessibility_suggestions["\']?\s*:\s*\[([^\]]+)\]', thought, re.IGNORECASE)
+            if suggestions_match:
+                logger.info("[ACCESSIBILITY DEBUG] Found accessibility_suggestions match: %s", suggestions_match.group(0))
+                suggestions_str = suggestions_match.group(1)
+                # Parse individual suggestions
+                suggestions = re.findall(r'["\']([^"\']+)["\']', suggestions_str)
+                accessibility_suggestions = [s.strip() for s in suggestions if s.strip()]
+                logger.info("[ACCESSIBILITY DEBUG] Parsed suggestions: %s", accessibility_suggestions)
+                break
+        if not accessibility_suggestions:
+            logger.warning("[ACCESSIBILITY DEBUG] No accessibility suggestions found in any thinking logs")
         
         final_message = (
             "TEST PASSED"
@@ -695,8 +693,8 @@ Run the workflow now. End with either:
             suggestions_str = str(accessibility_suggestions)
             final_message += f". accessibility_suggestions: {suggestions_str}"
             logger.info("[ACCESSIBILITY DEBUG] Added suggestions to final message: %s", suggestions_str)
-        elif accessibility_enabled:
-            logger.warning("[ACCESSIBILITY DEBUG] Accessibility was enabled but no suggestions were extracted")
+        else:
+            logger.warning("[ACCESSIBILITY DEBUG] No accessibility suggestions were extracted")
         
         logger.info(
             "session complete session_id=%s status=%s turns=%s accessibility_suggestions=%s message=%s",

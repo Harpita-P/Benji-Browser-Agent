@@ -135,7 +135,6 @@ export default function Home() {
   const [workflowCompleted, setWorkflowCompleted] = useState(false);
   const [lastWorkflowStatus, setLastWorkflowStatus] = useState<"passed" | "failed" | null>(null);
   const [bugDescription, setBugDescription] = useState<string>("");
-  const [accessibilityEnabled, setAccessibilityEnabled] = useState(false);
   const [accessibilitySuggestions, setAccessibilitySuggestions] = useState<string[]>([]);
   const [showAgentSteps, setShowAgentSteps] = useState(false);
   const [liveAgentUpdate, setLiveAgentUpdate] = useState("Waiting for model updates...");
@@ -341,7 +340,7 @@ export default function Home() {
     ];
     const highlightColors = [
       'bg-red-100/45 text-red-700/85',
-      'bg-white/70 text-black/65 shadow-[inset_0_0_0_9999px_rgba(0,0,0,0.14)]',
+      'bg-red-50/60 text-red-600/75',
     ];
     let highlightIndex = 0;
 
@@ -470,11 +469,11 @@ export default function Home() {
 
     ws.onopen = () => {
       addLog("status", "Computer Use Activated");
-      console.log('[ACCESSIBILITY DEBUG] Sending to backend:', { accessibility_enabled: accessibilityEnabled });
+      console.log('[ACCESSIBILITY DEBUG] Sending to backend:', { accessibility_enabled: true });
       ws.send(JSON.stringify({ 
         prompt: fullPrompt,
         client_id: "default",  // Must match CLIENT_ID in local playwright_client.py
-        accessibility_enabled: accessibilityEnabled
+        accessibility_enabled: true
       }));
     };
 
@@ -581,35 +580,32 @@ export default function Home() {
               } catch (e) {
                 setBugDescription("A bug was detected during workflow execution.");
               }
-              
-              // Extract accessibility suggestions if available
-              if (accessibilityEnabled) {
-                console.log('[ACCESSIBILITY DEBUG] Accessibility enabled, checking message:', message.content);
-                try {
-                  const accessibilityMatch = message.content.match(/accessibility_suggestions["']?\s*:\s*\[([^\]]+)\]/);
-                  console.log('[ACCESSIBILITY DEBUG] Regex match result:', accessibilityMatch);
-                  if (accessibilityMatch && accessibilityMatch[1]) {
-                    const suggestions = accessibilityMatch[1]
-                      .split(',')
-                      .map(s => s.trim().replace(/^["']|["']$/g, ''))
-                      .filter(s => s.length > 0);
-                    console.log('[ACCESSIBILITY DEBUG] Extracted suggestions:', suggestions);
-                    setAccessibilitySuggestions(suggestions);
-                  } else {
-                    console.log('[ACCESSIBILITY DEBUG] No accessibility_suggestions found in message');
-                  }
-                } catch (e) {
-                  console.error('[ACCESSIBILITY DEBUG] Error parsing accessibility suggestions:', e);
-                }
-              } else {
-                console.log('[ACCESSIBILITY DEBUG] Accessibility disabled, skipping extraction');
-              }
             } else {
               addLog(
                 "thinking",
                 `Final QA summary: ${message.content}`
               );
             }
+            
+            // Extract accessibility suggestions (always enabled, for both passed and failed tests)
+            console.log('[ACCESSIBILITY DEBUG] Checking message for accessibility suggestions:', message.content);
+            try {
+              const accessibilityMatch = message.content.match(/accessibility_suggestions["']?\s*:\s*\[([^\]]+)\]/);
+              console.log('[ACCESSIBILITY DEBUG] Regex match result:', accessibilityMatch);
+              if (accessibilityMatch && accessibilityMatch[1]) {
+                const suggestions = accessibilityMatch[1]
+                  .split(',')
+                  .map(s => s.trim().replace(/^["']|["']$/g, ''))
+                  .filter(s => s.length > 0);
+                console.log('[ACCESSIBILITY DEBUG] Extracted suggestions:', suggestions);
+                setAccessibilitySuggestions(suggestions);
+              } else {
+                console.log('[ACCESSIBILITY DEBUG] No accessibility_suggestions found in message');
+              }
+            } catch (e) {
+              console.error('[ACCESSIBILITY DEBUG] Error parsing accessibility suggestions:', e);
+            }
+            
             addLog("complete", message.content);
             
             // Reset session timer and mark workflow as completed
@@ -619,7 +615,6 @@ export default function Home() {
             setLastWorkflowStatus(isPassed ? "passed" : "failed");
             if (isPassed) {
               setBugDescription("");
-              setAccessibilitySuggestions([]);
             }
             setShowAgentSteps(false); // Toggle back to default panel
             setWorkflowRuns((prev) => [
@@ -827,12 +822,11 @@ export default function Home() {
         <header className="bg-white border-b border-gray-200 px-6 py-4 flex-shrink-0">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-[#FF0000] rounded-full flex items-center justify-center text-white font-bold text-sm">
-                B
-              </div>
-              <span className="text-lg font-semibold tracking-[0.02em]" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
-                Benji
-              </span>
+              <img 
+                src="/benji_pixel.png" 
+                alt="Benji" 
+                className="h-8"
+              />
             </div>
             <div className="flex items-center gap-3">
               <button className="px-4 py-2 text-sm bg-black text-white rounded-lg hover:bg-gray-800">
@@ -1096,10 +1090,15 @@ export default function Home() {
       {/* Header */}
       <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-3">
-          <div className="bg-gray-100 border border-gray-300 rounded-lg px-3 py-1.5">
-            <span className="text-gray-900 font-bold text-sm">{appName || "My App"}</span>
-          </div>
+          <img 
+            src="/benji_pixel.png" 
+            alt="Benji" 
+            className="h-7"
+          />
           <span className="text-gray-600 text-sm font-medium">Testing Workspace</span>
+          <div className="bg-[#FF0000] rounded-lg px-3 py-1.5">
+            <span className="text-white text-xs">{appName || "My App"}</span>
+          </div>
         </div>
         <div className="flex items-center gap-4 flex-1 justify-center">
           <div className="bg-gray-50 border border-gray-300 rounded-md px-4 py-2 flex items-center gap-2">
@@ -1117,11 +1116,11 @@ export default function Home() {
             {isGitHubConnected ? (
               <>
                 <CheckCircle className="w-4 h-4" />
-                Benji Connected to Github
+                Benji Connected to Github Repo
               </>
             ) : (
               <>
-                Connect Benji to Github
+                Connect Benji to Github Repo
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
@@ -1196,8 +1195,8 @@ export default function Home() {
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden min-h-0 px-12 pt-4 pb-12" style={{
-        backgroundColor: '#f0f7ff',
-        backgroundImage: 'linear-gradient(to right, #dbeafe 1px, transparent 1px), linear-gradient(to bottom, #dbeafe 1px, transparent 1px)',
+        backgroundColor: '#fff5f5',
+        backgroundImage: 'linear-gradient(to right, #fecaca 1px, transparent 1px), linear-gradient(to bottom, #fecaca 1px, transparent 1px)',
         backgroundSize: '20px 20px'
       }}>
         <div className="flex-1 flex gap-0 max-w-[1400px] mx-auto">
@@ -1223,7 +1222,7 @@ export default function Home() {
                       }`}>
                         <CheckCircle className="w-6 h-6 text-white" />
                       </div>
-                    ) : <div className="w-12 h-12 bg-white text-red-600 rounded-md flex items-center justify-center">{workflowCounter}</div>) : <div className="w-12 h-12 bg-white text-red-600 rounded-md flex items-center justify-center"><ArrowUp className="w-6 h-6" /></div>}
+                    ) : <div className="w-12 h-12 bg-white text-red-600 rounded-md flex items-center justify-center">{workflowCounter}</div>) : <div className="w-12 h-12 bg-white text-red-600 rounded-md flex items-center justify-center"><MousePointer className="w-6 h-6" /></div>}
                   </div>
                   <div className="text-lg font-semibold tracking-[-0.01em] text-white break-words flex-1">
                     {currentWorkflowName || "Run your first workflow"}
@@ -1314,8 +1313,8 @@ export default function Home() {
           )}
           
           <div className="border-b border-gray-200 flex-shrink-0 bg-gray-50">
-            <div className="p-4">
-              <div className="flex items-center gap-3">
+            <div className="p-5">
+              <div className="flex items-center gap-5">
                 <button
                   onClick={toggleVoiceInput}
                   disabled={isRunning}
@@ -1324,83 +1323,47 @@ export default function Home() {
                   }`}
                   title={isListening ? 'Stop recording' : 'Speak your workflow'}
                 >
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 ${
+                  <div className={`w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 animate-pulse ${
                     isListening
-                      ? 'bg-[#FF0000] shadow-md'
-                      : 'bg-gray-100 hover:bg-gray-200 border border-gray-300'
+                      ? 'bg-[#FF0000] shadow-lg shadow-red-500/50'
+                      : 'bg-[#FF0000] shadow-md'
                   }`}>
-                    <Mic className={`w-5 h-5 ${
-                      isListening ? 'text-white' : 'text-gray-600'
-                    }`} />
+                    {isListening ? (
+                      <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
+                        <rect x="4" y="4" width="3" height="16" rx="1.5">
+                          <animate attributeName="height" values="16;8;16" dur="1s" repeatCount="indefinite" />
+                          <animate attributeName="y" values="4;8;4" dur="1s" repeatCount="indefinite" />
+                        </rect>
+                        <rect x="10" y="2" width="3" height="20" rx="1.5">
+                          <animate attributeName="height" values="20;4;20" dur="1s" begin="0.2s" repeatCount="indefinite" />
+                          <animate attributeName="y" values="2;10;2" dur="1s" begin="0.2s" repeatCount="indefinite" />
+                        </rect>
+                        <rect x="16" y="6" width="3" height="12" rx="1.5">
+                          <animate attributeName="height" values="12;6;12" dur="1s" begin="0.4s" repeatCount="indefinite" />
+                          <animate attributeName="y" values="6;9;6" dur="1s" begin="0.4s" repeatCount="indefinite" />
+                        </rect>
+                      </svg>
+                    ) : (
+                      <Mic className="w-7 h-7 text-white" />
+                    )}
                   </div>
                 </button>
                 
                 <div className="flex-1 min-w-0">
-                  {prompt ? (
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm text-gray-900 truncate flex-1">{prompt}</p>
-                      <button
-                        onClick={handleRun}
-                        disabled={isRunning}
-                        className="px-3 py-1.5 text-xs bg-[#FF0000] text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
-                      >
-                        {isRunning ? 'Running...' : 'Run'}
-                      </button>
-                    </div>
-                  ) : (
-                    <div>
-                      <p className="text-sm text-gray-900">
-                        {isListening ? 'Listening...' : 'Speak your workflow'}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        {isListening ? 'Click to stop' : 'Click to start recording'}
-                      </p>
-                    </div>
-                  )}
+                  <div className="bg-white border border-gray-200 rounded-3xl px-6 py-4 shadow-md relative">
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2.5 w-5 h-5 bg-white border-l border-b border-gray-200 rotate-45"></div>
+                    <p className="text-base font-medium text-gray-900">
+                      {isListening ? 'Listening...' : 'Describe a new workflow you want Benji to validate'}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Accessibility Aware QA Section */}
-          <div className="border-b border-gray-200 flex-shrink-0 bg-gray-50">
-            <div className="bg-[#1e3a8a] px-6 py-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center w-10 h-10 bg-white text-[#1e3a8a] rounded-md flex-shrink-0">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-white font-semibold text-sm">Accessibility Aware QA</p>
-                    <p className="text-white/70 text-xs mt-0.5">Check for usability & accessibility issues</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => {
-                    const newValue = !accessibilityEnabled;
-                    console.log('[ACCESSIBILITY DEBUG] Toggle clicked, new value:', newValue);
-                    setAccessibilityEnabled(newValue);
-                  }}
-                  title={accessibilityEnabled ? 'Disable Accessibility QA' : 'Enable Accessibility QA'}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    accessibilityEnabled ? 'bg-green-500' : 'bg-gray-400'
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      accessibilityEnabled ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Accessibility Suggestions Section - Show if suggestions exist */}
-          {accessibilitySuggestions.length > 0 && (
+          {/* Accessibility Suggestions Section - Only show if there are actual suggestions (not "No accessibility improvement recommendations!") */}
+          {accessibilitySuggestions.length > 0 && 
+           !accessibilitySuggestions.some(s => s.toLowerCase().includes('no accessibility improvement')) && (
             <div className="bg-gray-50 flex-shrink-0 border-b border-gray-200">
               <div className="bg-[#0891b2] px-6 py-4">
                 <div className="flex items-start gap-4">
