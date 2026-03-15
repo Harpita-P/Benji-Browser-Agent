@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import { Play, Loader2, AlertCircle, Code, MessageSquare, Gamepad2, TrendingUp, X, Clock, Mic, MicOff, ArrowRight, CheckCircle, MousePointer, ArrowUp, Eye } from "lucide-react";
+import { Play, Loader2, AlertCircle, Code, MessageSquare, Gamepad2, TrendingUp, X, Clock, Mic, MicOff, ArrowRight, CheckCircle, MousePointer, ArrowUp, Eye, ExternalLink } from "lucide-react";
 
 interface Message {
   type: string;
@@ -571,14 +571,14 @@ export default function Home() {
               
               // Extract bug description if available
               try {
-                const bugDescMatch = message.content.match(/short_bug_description["']?\s*:\s*["']([^"']+)["']/);
+                const bugDescMatch = message.content.match(/bug_explanation["']?\s*:\s*["']([^"']+)["']/);
                 if (bugDescMatch && bugDescMatch[1]) {
                   setBugDescription(bugDescMatch[1]);
                 } else {
-                  setBugDescription("A bug was detected during workflow execution.");
+                  setBugDescription("");
                 }
               } catch (e) {
-                setBugDescription("A bug was detected during workflow execution.");
+                setBugDescription("");
               }
             } else {
               addLog(
@@ -1136,6 +1136,98 @@ export default function Home() {
           </button>
         </div>
       </header>
+
+      {/* GitHub Analysis Modal - Shows while analyzing and displays results */}
+      {(isAnalyzing || analysisResult) && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+            {isAnalyzing ? (
+              // Loading state
+              <div className="text-center">
+                <div className="flex justify-center mb-4">
+                  <Loader2 className="w-12 h-12 text-[#FF0000] animate-spin" />
+                </div>
+                <h3 className="text-xl font-semibold mb-2 text-gray-900">Benji is reviewing your code repository</h3>
+                <div className="flex justify-center items-center gap-1 mt-4">
+                  <div className="w-2 h-2 bg-[#FF0000] rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
+                  <div className="w-2 h-2 bg-[#FF0000] rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
+                  <div className="w-2 h-2 bg-[#FF0000] rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
+                </div>
+                {analysisPhase && (
+                  <p className="text-sm text-gray-600 mt-4">{analysisPhase}</p>
+                )}
+              </div>
+            ) : analysisResult ? (
+              // Results state
+              <div>
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-2xl font-bold text-gray-900">Analysis Complete</h3>
+                  <button
+                    onClick={() => setAnalysisResult(null)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+                
+                {analysisResult.prCreated && (
+                  <div className="mb-6 rounded-lg border-2 border-green-300 bg-green-50 p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <CheckCircle className="w-5 h-5 text-green-600" />
+                      <div className="text-lg font-semibold text-green-800">Pull Request Created</div>
+                    </div>
+                    <div className="text-sm text-green-700 mb-3">GitHub MCP workflow completed branch/commit/PR steps.</div>
+                    
+                    {analysisResult.prUrl && (
+                      <a
+                        href={analysisResult.prUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                      >
+                        View Pull Request
+                        <ExternalLink className="w-4 h-4" />
+                      </a>
+                    )}
+                  </div>
+                )}
+                
+                <div className="space-y-4">
+                  {analysisResult.branch && (
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Branch</div>
+                      <div className="text-base text-gray-900 font-mono">{analysisResult.branch}</div>
+                    </div>
+                  )}
+                  
+                  {analysisResult.commit && (
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Commit</div>
+                      <div className="text-base text-gray-900 font-mono">{analysisResult.commit}</div>
+                    </div>
+                  )}
+                  
+                  {analysisResult.analysis && (
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <div className="text-sm font-medium text-gray-600 mb-2">Analysis Details</div>
+                      <div className="text-sm text-gray-900 whitespace-pre-wrap">{analysisResult.analysis}</div>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="mt-6 flex justify-end">
+                  <button
+                    onClick={() => setAnalysisResult(null)}
+                    className="px-6 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800 transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      )}
 
       {/* GitHub Connection Modal */}
       {showGitHubModal && (

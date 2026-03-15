@@ -388,6 +388,26 @@ Expected workflow to test:
 Run the workflow now. End with either:
 - TEST PASSED
 - TEST FAILED - BUG DETECTED
+
+CRITICAL BUG REPORTING FORMAT:
+If you detect a bug and report TEST FAILED - BUG DETECTED, you MUST include a bug_explanation field in your response:
+
+bug_explanation: "Short statement of what the bug is"
+
+EXAMPLES:
+- bug_explanation: "Incorrect product quantity in cart"
+- bug_explanation: "Button color has low contrast"
+- bug_explanation: "Image caption does not match product"
+- bug_explanation: "Cart total calculation is wrong"
+- bug_explanation: "Remove button does not work"
+
+The bug_explanation MUST be:
+- A short, clear statement (5-10 words)
+- Specific to the actual bug found
+- Written in plain text without markdown
+- Focused on WHAT is wrong, not HOW to fix it
+
+DO NOT use generic statements like "A bug was detected" - be specific about what the bug is.
 """.strip()
 
         # Initialize conversation history
