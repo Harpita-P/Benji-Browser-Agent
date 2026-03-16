@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Benji UI Agent",
-  description: "AI-powered browser automation interface",
+  title: "Benji AI Agent",
+  description: "AI teammate for the interface layer",
 };
 
 export default function RootLayout({

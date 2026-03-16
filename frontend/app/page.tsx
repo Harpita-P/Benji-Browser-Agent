@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import { Play, Loader2, AlertCircle, Code, MessageSquare, Gamepad2, TrendingUp, X, Clock, Mic, MicOff, ArrowRight, CheckCircle, MousePointer, ArrowUp, Eye, ExternalLink } from "lucide-react";
+import { Play, Loader2, AlertCircle, Code, MessageSquare, Gamepad2, TrendingUp, X, Clock, Mic, MicOff, ArrowRight, CheckCircle, MousePointer, ArrowUp, Eye, ExternalLink, Settings } from "lucide-react";
 
 interface Message {
   type: string;
@@ -144,7 +144,11 @@ export default function Home() {
     visible: false,
   });
   const [isVoiceMuted, setIsVoiceMuted] = useState(false);
-  const rotatingTitles = ["Super Engineer", "Teammate"];
+  const [showErrorBanner, setShowErrorBanner] = useState(false);
+  const [errorBannerMessage, setErrorBannerMessage] = useState("");
+  const [showAgentLogs, setShowAgentLogs] = useState(false);
+  const [showPlaywrightInfo, setShowPlaywrightInfo] = useState(false);
+  const rotatingTitles = ["AI teammate for real user experience", "AI teammate for the interface layer"];
   const [titleIndex, setTitleIndex] = useState(0);
   const agentStepsScrollRef = useRef<HTMLDivElement>(null);
   const [titleVisible, setTitleVisible] = useState(true);
@@ -315,6 +319,17 @@ export default function Home() {
   };
 
   useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && prompt && !isRunning) {
+        handleRun();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [prompt, isRunning]);
+
+  useEffect(() => {
     if (!sessionStartTime) return;
     
     const interval = setInterval(() => {
@@ -337,6 +352,10 @@ export default function Home() {
       { bug: 'Modal overlay gaps' },
       { bug: 'Input placeholder style' },
       { bug: 'Button alignment off' },
+      { bug: 'Dropdown menu overflow' },
+      { bug: 'Form validation error' },
+      { bug: 'Navbar collapse issue' },
+      { bug: 'Footer spacing wrong' },
     ];
     const highlightColors = [
       'bg-red-100/45 text-red-700/85',
@@ -613,10 +632,22 @@ export default function Home() {
             setElapsedTime("0:00");
             setWorkflowCompleted(true);
             setLastWorkflowStatus(isPassed ? "passed" : "failed");
+            
+            // Show error banner if test failed
+            if (isFailed) {
+              setErrorBannerMessage("Benji is taking a while to process this, please try again");
+              setShowErrorBanner(true);
+              // Auto-hide after 8 seconds
+              setTimeout(() => {
+                setShowErrorBanner(false);
+              }, 8000);
+            }
+            
             if (isPassed) {
               setBugDescription("");
             }
-            setShowAgentSteps(false); // Toggle back to default panel
+            // KEEP AGENT PANEL OPEN - User must click X to close
+            // setShowAgentSteps(false); // Toggle back to default panel
             setWorkflowRuns((prev) => [
               ...prev,
               {
@@ -628,9 +659,10 @@ export default function Home() {
                 createdAt: Date.now(),
               },
             ]);
-            addLog("status", "Benji Test Lab is ready. Enter the next UI workflow test and click Run Workflow.");
+            addLog("status", "Agent has completed the workflow.");
             setPrompt("");
-            setLiveAgentUpdate("Test complete. Ready for next workflow.");
+            // Update bubble cursor with final test result
+            setLiveAgentUpdate(message.content || "Test complete. Ready for next workflow.");
           }
           setIsRunning(false);
           break;
@@ -767,7 +799,7 @@ export default function Home() {
       case "complete":
         return "✅";
       case "status":
-        return "ℹ️";
+        return <Settings className="w-4 h-4 text-gray-600" />;
       default:
         return "•";
     }
@@ -813,8 +845,6 @@ export default function Home() {
         {/* Top Banner */}
         <div className="bg-[#FF0000] text-white px-6 py-3 text-sm flex-shrink-0">
           <div className="max-w-7xl mx-auto flex items-center gap-2">
-            <span>Powered by Gemini Computer Use + Gemini Live + Cloud Run</span>
-            <span className="ml-auto text-xs">2026</span>
           </div>
         </div>
 
@@ -825,13 +855,18 @@ export default function Home() {
               <img 
                 src="/benji_pixel.png" 
                 alt="Benji" 
-                className="h-8"
+                className="h-8 scale-[2.5] origin-left"
               />
             </div>
             <div className="flex items-center gap-3">
-              <button className="px-4 py-2 text-sm bg-black text-white rounded-lg hover:bg-gray-800">
+              <a 
+                href="https://github.com/Harpita-P/Benji-Browser-Agent"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-2 text-sm bg-black text-white rounded-lg hover:bg-gray-800"
+              >
                 View Benji on Github
-              </button>
+              </a>
             </div>
           </div>
         </header>
@@ -849,50 +884,47 @@ export default function Home() {
                 <div
                   key={i}
                   className={`border border-gray-100 transition-all duration-500 ${
-                    activeBug ? `${activeBug.color} border-transparent` : 'bg-white'
+                    activeBug ? `${activeBug.color} bg-opacity-30 border-transparent` : 'bg-white'
                   }`}
                 >
-                  {activeBug && (
-                    <div className="p-2 h-full flex items-center justify-center">
-                      <div className="text-[10px] font-medium text-center leading-tight">
-                        ■ {activeBug.bug}
-                      </div>
-                    </div>
-                  )}
                 </div>
               );
             })}
           </div>
 
           {/* Content Overlay */}
-          <div className="relative z-10 flex flex-col items-center px-12 pt-28 pb-36">
+          <div className="relative z-10 flex flex-col items-center px-12 pt-12 pb-20">
             {/* Main Heading */}
-            <div className="text-center mb-16 max-w-5xl">
+            <div className="text-center mb-12 max-w-7xl">
               <div className="-mt-2 mb-3 flex justify-center">
                 <Image
                   src="/agentic_cursor.png"
                   alt="Agentic cursor"
-                  width={220}
-                  height={220}
-                  className="h-40 w-40 object-contain md:h-52 md:w-52"
+                  width={180}
+                  height={180}
+                  className="h-32 w-32 object-contain md:h-36 md:w-36"
                   priority
                 />
               </div>
-              <h1 className="text-7xl font-normal mb-6 tracking-tight" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
-                <span className="text-gray-800">Benji</span> is your AI{" "}
+              <h1 className="text-5xl md:text-6xl font-normal mb-6 tracking-tight leading-tight whitespace-nowrap" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
+                <span className="text-gray-800">Benji is your AI teammate for </span>
                 <span className={`inline-block transition-opacity duration-300 ${titleVisible ? "opacity-100" : "opacity-0"}`}>
-                  {rotatingTitles[titleIndex]}
+                  {titleIndex === 0 ? (
+                    <span className="bg-yellow-200 px-2">real user experience</span>
+                  ) : (
+                    <span className="bg-yellow-200 px-2">the interface layer</span>
+                  )}
                 </span>
               </h1>
-              <div className="flex items-center justify-center gap-3 mb-6">
-                <span className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-md text-xs font-semibold">
-                  Gemini computer use
+              <div className="flex items-center justify-center gap-4 mb-12">
+                <span className="px-5 py-2.5 bg-blue-50 text-blue-600 rounded-xl text-sm font-semibold">
+                  Gemini Computer Use
                 </span>
-                <span className="px-3 py-1.5 bg-red-100 text-red-700 rounded-md text-xs font-semibold">
+                <span className="px-5 py-2.5 bg-red-50 text-red-600 rounded-xl text-sm font-semibold">
                   GitHub ADK MCP
                 </span>
               </div>
-              <div className="relative mx-auto w-full max-w-5xl overflow-hidden border border-amber-200/90 bg-amber-50/95 shadow-md">
+              <div className="relative mx-auto w-full max-w-[90rem] overflow-hidden border border-amber-200/90 bg-amber-50/95 shadow-md">
                 <div
                   className="absolute inset-0 opacity-50"
                   style={{
@@ -901,77 +933,65 @@ export default function Home() {
                     backgroundSize: "26px 26px",
                   }}
                 />
-                <div className="relative z-10 grid gap-8 p-6 md:grid-cols-2 md:p-8">
+                <div className="relative z-10 grid gap-6 p-8 md:grid-cols-[35%_65%] md:p-12">
                   <div className="text-left">
-                    <div className="mb-3 inline-flex items-center gap-2 border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">
-                      <span className="h-1.5 w-1.5 rounded-full bg-[#FF0000]" />
-                      Benji Test Surface
-                    </div>
-                    <p className="text-2xl font-medium leading-tight text-[#FF0000] md:text-3xl" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
-                      Build and ship with more confidence
+                    <p className="text-3xl font-medium leading-tight text-[#FF0000] md:text-4xl" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
+                      Build & ship with more confidence
+                    </p>
+                    <p className="mt-4 text-sm md:text-base font-semibold text-gray-900 bg-gradient-to-r from-amber-50 to-yellow-50 border-l-4 border-[#FF0000] px-4 py-3 rounded">
+                      The hardest part of building great apps is that the experience can break in ways that are easy to miss until a real user runs into them. Benji is your AI teammate built for that layer.
                     </p>
                     <p className="mt-3 text-sm text-gray-700 md:text-base">
-                      Benji tests real UI workflows, catches visual bugs, and writes fixes directly in code.
+                      Benji uses multimodal vision and reasoning to understand interfaces the way humans do, then clicks, types, and navigates through your app to carry out real workflows, uncover meaningful bugs, and take autonomous action — including helping fix the code behind the bug through GitHub MCP.
                     </p>
-                    <div className="mt-5 flex flex-wrap gap-2 text-xs font-medium">
-                      <span className="border border-gray-300 bg-white px-2.5 py-1 text-gray-700">Runs real workflows</span>
-                      <span className="border border-gray-300 bg-white px-2.5 py-1 text-gray-700">Finds UI regressions</span>
-                      <span className="border border-gray-300 bg-white px-2.5 py-1 text-gray-700">Suggests code fixes</span>
-                      <span className="border border-gray-300 bg-white px-2.5 py-1 text-gray-700">Opens PR-ready changes</span>
+                    <div className="mt-5 flex flex-wrap gap-3 text-sm font-semibold">
+                      <span className="bg-purple-50 text-purple-600 px-4 py-2 rounded-xl">Clicks, Types & Navigates</span>
+                      <span className="bg-green-50 text-green-600 px-4 py-2 rounded-xl">Multimodal vision</span>
+                      <span className="bg-orange-50 text-orange-600 px-4 py-2 rounded-xl">Multi-Step Reasoning</span>
+                      <span className="bg-pink-50 text-pink-600 px-4 py-2 rounded-xl">Agentic code fixes</span>
                     </div>
                   </div>
 
-                  <div className="relative min-h-[220px] md:min-h-[250px]">
-                    <div className="absolute left-6 top-6 w-[74%] border border-gray-300 bg-white/95 p-4 shadow-sm">
-                      <div className="mb-3 flex items-center justify-between text-[11px] uppercase tracking-wide text-gray-500">
-                        <span>Live Test Board</span>
-                        <span className="bg-red-100 px-2 py-0.5 text-red-700">Active</span>
-                      </div>
-                      <div className="space-y-2 text-xs">
-                        <div className="flex items-center justify-between border border-gray-200 bg-gray-50 px-2 py-1">
-                          <span>Login flow</span>
-                          <span className="bg-green-100 px-2 py-0.5 text-green-700">Pass</span>
-                        </div>
-                        <div className="flex items-center justify-between border border-gray-200 bg-gray-50 px-2 py-1">
-                          <span>Checkout flow</span>
-                          <span className="bg-red-100 px-2 py-0.5 text-red-700">Fail</span>
-                        </div>
-                        <div className="flex items-center justify-between border border-gray-200 bg-gray-50 px-2 py-1">
-                          <span>Task creation</span>
-                          <span className="bg-amber-100 px-2 py-0.5 text-amber-700">Review</span>
-                        </div>
-                      </div>
+                  <div className="relative flex flex-col gap-4">
+                    {/* Large Badge Above Video */}
+                    <div className="bg-gradient-to-r from-blue-500 to-blue-600 border-2 border-blue-700 rounded-xl px-6 py-4 shadow-lg">
+                      <p className="text-base md:text-lg font-bold text-white text-center leading-relaxed">
+                        Describe a test workflow in plain language, and let Benji try it inside your app.
+                      </p>
                     </div>
-
-                    <div className="absolute right-2 top-2 border border-red-200 bg-red-50/95 px-3 py-2 text-xs text-red-700 shadow-sm">
-                      Modal overflow bug
-                    </div>
-                    <div className="absolute right-0 top-20 border border-blue-200 bg-blue-50/95 px-3 py-2 text-xs text-blue-700 shadow-sm">
-                      PR opened
-                    </div>
-                    <div className="absolute bottom-3 right-6 border border-green-200 bg-green-50/95 px-3 py-2 text-xs text-green-700 shadow-sm">
-                      2 fixes proposed
-                    </div>
-                    <div className="absolute bottom-0 left-0 border border-gray-300 bg-white/95 px-3 py-2 text-xs text-gray-700 shadow-sm">
-                      12 workflows run
+                    
+                    {/* Video Frame */}
+                    <div className="relative rounded-xl border-2 border-gray-400 overflow-hidden">
+                      <video
+                        className="w-full h-auto"
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                      >
+                        <source src="/BakeryAppDemo.mp4" type="video/mp4" />
+                        Your browser does not support the video tag.
+                      </video>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Benji Browser Input Box - Mac Dialog Style */}
-            <div className="max-w-5xl w-full mb-40 rounded-none bg-gradient-to-br from-[#ff8d8d] via-[#FF5C5C] to-[#FF0000] p-1.5 shadow-2xl">
-              <div className="overflow-hidden rounded-none border border-black/10 bg-[#f6f6f6]">
-                <div className="flex items-center gap-2 border-b border-black/10 bg-[#ececec] px-6 py-3">
-                  <span className="h-3 w-3 rounded-full bg-[#ff5f57]" />
-                  <span className="h-3 w-3 rounded-full bg-[#febc2e]" />
-                  <span className="h-3 w-3 rounded-full bg-[#28c840]" />
-                  <span className="ml-4 text-xs font-medium tracking-wide text-gray-500">Benji Test Lab</span>
+            {/* Let Benji Get to Work - Clean Modern Light Theme */}
+            <div className="max-w-5xl w-full mb-40 mt-20">
+              <div className="overflow-hidden rounded-xl bg-gradient-to-br from-yellow-50 via-white to-red-50 border border-gray-200 shadow-lg">
+                {/* Header */}
+                <div className="border-b border-gray-200 bg-gradient-to-r from-yellow-50 to-red-50 px-8 py-5">
+                  <h3 className="text-2xl font-bold text-gray-900" style={{fontFamily: 'monospace'}}>
+                    Let Benji Get to Work
+                  </h3>
                 </div>
-                <div className="space-y-4 p-6">
+
+                {/* Body */}
+                <div className="space-y-6 p-8">
                   <div>
-                    <label htmlFor="app-name" className="mb-2 inline-block bg-black px-3 py-1 text-xs font-medium text-white" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
+                    <label htmlFor="app-name" className="mb-2 block text-sm font-semibold text-gray-700" style={{fontFamily: 'monospace'}}>
                       App Name
                     </label>
                     <input
@@ -980,15 +1000,15 @@ export default function Home() {
                       type="text"
                       value={appName}
                       onChange={(e) => setAppName(e.target.value)}
-                      placeholder="e.g., My Todo App"
-                      className="w-full rounded-md border border-gray-300 bg-white px-6 py-3 text-base focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
-                      style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}
+                      placeholder="My Fitness App"
+                      className="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-3 text-base text-gray-900 placeholder-gray-400 transition-all focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-100"
+                      style={{fontFamily: 'monospace'}}
                     />
                   </div>
 
                   <div>
-                    <label htmlFor="app-url" className="mb-2 inline-block bg-black px-3 py-1 text-xs font-medium text-white" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
-                      App URL
+                    <label htmlFor="app-url" className="mb-2 block text-sm font-semibold text-gray-700" style={{fontFamily: 'monospace'}}>
+                      Deployed URL or Local URL
                     </label>
                     <input
                       id="app-url"
@@ -996,23 +1016,51 @@ export default function Home() {
                       type="url"
                       value={appUrl}
                       onChange={(e) => setAppUrl(e.target.value)}
-                      placeholder="http://localhost:3000"
-                      className="w-full rounded-md border border-gray-300 bg-white px-6 py-3 text-base focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
-                      style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}
+                      placeholder="https://my-fitness-app.com or http://localhost:3000"
+                      className="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-3 text-base text-gray-900 placeholder-gray-400 transition-all focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-100"
+                      style={{fontFamily: 'monospace'}}
                     />
                   </div>
 
                   <button
                     onClick={handleRun}
                     disabled={!appUrl.trim() || !appName.trim() || isRunning}
-                    className="w-full rounded-md bg-[#FF0000] px-10 py-4 text-lg font-medium text-white transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
-                    style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}
+                    className="w-full rounded-lg bg-gradient-to-r from-red-500 to-red-600 px-10 py-4 text-lg font-bold text-white transition-all hover:from-red-600 hover:to-red-700 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
+                    style={{fontFamily: 'monospace'}}
                   >
-                    Launch New Workspace →
+                    {isRunning ? 'Launching...' : 'Launch Workspace →'}
                   </button>
+                  
+                  {showPlaywrightInfo && (
+                    <div className="rounded-lg border-2 border-blue-400 bg-blue-50 p-6 space-y-3">
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 mt-0.5">
+                          <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm text-blue-800 mb-3" style={{fontFamily: 'monospace'}}>
+                            Benji has a hybrid system which requires Playwright in order to interact, click, type, and navigate on your app.
+                          </p>
+                          <p className="text-sm font-semibold text-blue-900" style={{fontFamily: 'monospace'}}>
+                            Please set up via GitHub to enable full functionality.
+                          </p>
+                          <button
+                            onClick={() => setShowPlaywrightInfo(false)}
+                            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"
+                            style={{fontFamily: 'monospace'}}
+                          >
+                            Got it
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
                   {isListening && (
-                    <div className="flex items-center gap-2 text-sm text-[#FF0000]">
-                      <div className="h-2 w-2 animate-pulse rounded-full bg-[#FF0000]"></div>
+                    <div className="flex items-center gap-2 rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-3 text-sm font-medium text-yellow-800" style={{fontFamily: 'monospace'}}>
+                      <div className="h-2 w-2 animate-pulse rounded-full bg-yellow-500"></div>
                       <span>Listening...</span>
                     </div>
                   )}
@@ -1022,59 +1070,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* How Benji Works Section - Plain Background */}
-        <div className="bg-white py-24">
-          <div className="max-w-7xl mx-auto px-12">
-            {/* Info Panel with Video */}
-            <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 p-16">
-              <div className="grid grid-cols-2 gap-16 items-start">
-                {/* Left: Description */}
-                <div className="flex flex-col justify-center h-full">
-                  <h3 className="text-4xl font-semibold mb-6" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>
-                    How Benji Works
-                  </h3>
-                  <p className="text-gray-600 text-lg leading-relaxed mb-8">
-                    Watch Benji work in real-time with Gemini Computer Use to navigate UI workflows in your app, spot bugs, reason intelligently, and suggest code fixes like a teammate.
-                  </p>
-                  <ul className="space-y-4 text-gray-600 text-lg">
-                    <li className="flex items-start gap-3">
-                      <span className="text-[#FF0000] mt-1 text-xl">✓</span>
-                      <span>Automatically navigates complex UI workflows</span>
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <span className="text-[#FF0000] mt-1 text-xl">✓</span>
-                      <span>Detects visual bugs and UI inconsistencies</span>
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <span className="text-[#FF0000] mt-1 text-xl">✓</span>
-                      <span>Provides intelligent code fix suggestions</span>
-                    </li>
-                  </ul>
-                </div>
-
-                {/* Right: Video Placeholder */}
-                <div className="bg-gradient-to-br from-purple-100 to-red-100 rounded-2xl flex items-center justify-center border-2 border-dashed border-gray-300" style={{minHeight: '600px'}}>
-                  <div className="text-center">
-                    <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-                      <svg className="w-12 h-12 text-[#FF0000]" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M8 5v14l11-7z"/>
-                      </svg>
-                    </div>
-                    <p className="text-gray-500 font-medium text-xl">Demo Video</p>
-                    <p className="text-sm text-gray-400">Coming Soon</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Bottom Text */}
-            <div className="text-center mt-20">
-              <p className="text-lg text-gray-500 font-light">
-                Trusted by <span className="font-semibold text-gray-700">QA Teams</span> at top tech companies
-              </p>
-            </div>
-          </div>
-        </div>
         {/* Footer */}
         <footer className="bg-gray-800 text-white py-4 flex-shrink-0">
           <div className="max-w-7xl mx-auto px-6 text-center text-sm">
@@ -1164,11 +1159,10 @@ export default function Home() {
                 
                 {analysisResult.prCreated && (
                   <div className="mb-6 rounded-lg border-2 border-green-300 bg-green-50 p-4">
-                    <div className="flex items-center gap-2 mb-2">
+                    <div className="flex items-center gap-2 mb-3">
                       <CheckCircle className="w-5 h-5 text-green-600" />
-                      <div className="text-lg font-semibold text-green-800">Pull Request Created</div>
+                      <div className="text-lg font-semibold text-green-800">I&apos;ve created a pull request with the code fix. Please visit Github to view more.</div>
                     </div>
-                    <div className="text-sm text-green-700 mb-3">GitHub MCP workflow completed branch/commit/PR steps.</div>
                     
                     {analysisResult.prUrl && (
                       <a
@@ -1184,25 +1178,45 @@ export default function Home() {
                   </div>
                 )}
                 
-                <div className="space-y-4">
-                  {analysisResult.branch && (
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <div className="text-sm font-medium text-gray-600 mb-1">Branch</div>
-                      <div className="text-base text-gray-900 font-mono">{analysisResult.branch}</div>
-                    </div>
-                  )}
+                {/* Agent Logs Section */}
+                <div className="mb-6">
+                  <button
+                    onClick={() => setShowAgentLogs(!showAgentLogs)}
+                    className="flex items-center gap-2 text-gray-700 hover:text-gray-900 font-medium"
+                  >
+                    <span>Agent Logs</span>
+                    <svg
+                      className={`w-4 h-4 transition-transform ${showAgentLogs ? 'rotate-180' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
                   
-                  {analysisResult.commit && (
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <div className="text-sm font-medium text-gray-600 mb-1">Commit</div>
-                      <div className="text-base text-gray-900 font-mono">{analysisResult.commit}</div>
-                    </div>
-                  )}
-                  
-                  {analysisResult.analysis && (
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <div className="text-sm font-medium text-gray-600 mb-2">Analysis Details</div>
-                      <div className="text-sm text-gray-900 whitespace-pre-wrap">{analysisResult.analysis}</div>
+                  {showAgentLogs && (
+                    <div className="mt-4 space-y-4">
+                      {analysisResult.branch && (
+                        <div className="bg-gray-50 rounded-lg p-4">
+                          <div className="text-sm font-medium text-gray-600 mb-1">Branch</div>
+                          <div className="text-base text-gray-900 font-mono">{analysisResult.branch}</div>
+                        </div>
+                      )}
+                      
+                      {analysisResult.commit && (
+                        <div className="bg-gray-50 rounded-lg p-4">
+                          <div className="text-sm font-medium text-gray-600 mb-1">Commit</div>
+                          <div className="text-base text-gray-900 font-mono">{analysisResult.commit}</div>
+                        </div>
+                      )}
+                      
+                      {analysisResult.analysis && (
+                        <div className="bg-gray-50 rounded-lg p-4">
+                          <div className="text-sm font-medium text-gray-600 mb-2">Analysis Details</div>
+                          <div className="text-sm text-gray-900 whitespace-pre-wrap">{analysisResult.analysis}</div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1288,7 +1302,7 @@ export default function Home() {
             }`}
           >
           <div className="bg-gray-50 flex-shrink-0 border-b border-gray-200">
-              <div className={`px-6 py-5 shadow-sm relative transition-colors duration-300 ${
+              <div className={`px-6 py-8 shadow-sm relative transition-colors duration-300 ${
                 workflowCompleted && lastWorkflowStatus === "passed" 
                   ? "bg-[#16a34a]" 
                   : "bg-[#FF0000]"
@@ -1413,7 +1427,7 @@ export default function Home() {
           )}
           </div>
           
-          {/* Mic Section - Hide when bug section is visible */}
+          {/* Mic Section - Hide when bug section is visible OR when workflow completed with failure (until user clicks Accept/Ignore) */}
           {!(workflowCompleted && lastWorkflowStatus === "failed") && (
           <div className="border-b border-gray-200 flex-shrink-0 bg-gray-50">
             <div className="p-5">
@@ -1452,26 +1466,24 @@ export default function Home() {
                   </div>
                 </button>
                 
-                <div className="flex-1 min-w-0">
-                  <div className="bg-white border border-gray-200 rounded-3xl px-6 py-4 shadow-md relative">
-                    <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2.5 w-5 h-5 bg-white border-l border-b border-gray-200 rotate-45"></div>
-                    {prompt ? (
-                      <div>
-                        <p className="text-sm text-gray-500 mb-1">Workflow to validate:</p>
-                        <p className="text-base font-medium text-gray-900">{prompt}</p>
-                      </div>
-                    ) : (
+                <div className="flex-1 min-w-0 flex items-center gap-4">
+                  {!prompt && (
+                    <div className="flex-1 bg-white border border-gray-200 rounded-3xl px-6 py-4 shadow-md relative">
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2.5 w-5 h-5 bg-white border-l border-b border-gray-200 rotate-45"></div>
                       <p className="text-base font-medium text-gray-900">
                         {isListening ? 'Listening...' : 'Describe a new workflow you want Benji to validate'}
                       </p>
-                    )}
-                  </div>
+                    </div>
+                  )}
                   {prompt && !isRunning && (
                     <button
                       onClick={handleRun}
-                      className="mt-3 w-full bg-[#FF0000] text-white px-6 py-3 rounded-xl font-medium hover:bg-red-600 transition-colors shadow-md"
+                      className="flex-shrink-0 w-14 h-14 rounded-full bg-green-500 hover:bg-green-600 transition-all duration-200 flex items-center justify-center shadow-lg hover:scale-105"
+                      title="Run workflow"
                     >
-                      Run Workflow
+                      <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
                     </button>
                   )}
                 </div>
@@ -1608,7 +1620,13 @@ export default function Home() {
                 return (
                   <div key={index} className="bg-white border border-gray-200 rounded-lg p-4">
                     <div className="flex items-center gap-2">
-                      <span className="text-lg">{log.type === 'error' ? '❌' : log.type === 'complete' ? '✅' : 'ℹ️'}</span>
+                      {log.type === 'error' ? (
+                        <span className="text-lg">❌</span>
+                      ) : log.type === 'complete' ? (
+                        <span className="text-lg">✅</span>
+                      ) : (
+                        <Settings className="w-4 h-4 text-gray-600" />
+                      )}
                       <p className="text-sm text-gray-700">{log.content}</p>
                     </div>
                   </div>
@@ -1636,7 +1654,7 @@ export default function Home() {
             {/* Workflow Name Display - Center Top */}
             {currentWorkflowName && isRunning && (
               <div className="absolute top-16 left-1/2 transform -translate-x-1/2 z-30 bg-[#FF0000] px-4 py-2 rounded-lg shadow-md">
-                <span className="text-sm font-semibold text-white">{currentWorkflowName.charAt(0).toUpperCase() + currentWorkflowName.slice(1)}</span>
+                <span className="text-sm font-semibold text-white">Test: {currentWorkflowName.charAt(0).toUpperCase() + currentWorkflowName.slice(1)}</span>
               </div>
             )}
             
@@ -1706,6 +1724,14 @@ export default function Home() {
               </div>
             )}
             </div>
+            
+            {/* Error Banner - Bottom of Live Browser Area */}
+            {showErrorBanner && (
+              <div className="absolute bottom-16 left-1/2 transform -translate-x-1/2 z-40 max-w-[300px] rounded-lg border-2 border-black bg-gradient-to-r from-red-600 to-red-700 px-3 py-2 text-xs font-medium text-white shadow-xl">
+                <div className="text-xs text-red-100/95 font-semibold">Benji</div>
+                <div className="mt-0.5">{errorBannerMessage}</div>
+              </div>
+            )}
           </div>
 
           {/* Bottom Bar - Inside Border */}

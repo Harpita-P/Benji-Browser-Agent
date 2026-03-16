@@ -6,7 +6,6 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from google import genai
-from google.cloud import texttospeech
 from typing import Dict, Optional
 import os
 import json
@@ -17,9 +16,6 @@ from dotenv import load_dotenv
 from github_agent import create_github_agent
 
 load_dotenv()
-
-# Initialize Google Cloud Text-to-Speech client
-tts_client = texttospeech.TextToSpeechClient()
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(
@@ -57,14 +53,6 @@ def _friendly_quota_message() -> str:
     )
 
 
-async def _generate_speech(text: str) -> str:
-    """
-    Generate speech audio from text using Google Cloud Text-to-Speech.
-    Returns base64-encoded audio data.
-    DISABLED: Returns empty string to disable TTS.
-    """
-    # TTS disabled - return empty string
-    return ""
 
 
 async def _generate_content_with_retry(
@@ -168,9 +156,13 @@ The current_update should be:
 
 SPECIAL CASE - Test Completion:
 When you conclude with TEST PASSED or TEST FAILED, make the current_update friendly and celebratory/explanatory:
-- For TEST PASSED: {"current_update": "Great! The test passed successfully"}
-- For TEST FAILED: {"current_update": "Test failed - [brief bug description]"}
-  Example: {"current_update": "Test failed - Create button didn't save the project"}
+- For TEST PASSED: {"current_update": "TEST PASSED"}
+- For TEST FAILED: {"current_update": "TEST FAILED - [brief bug description]"}
+
+CRITICAL: The current_update in your final verdict MUST display in the bubble cursor for the user to see.
+- Keep it concise and specific
+- For failures, clearly state what bug was found
+- This message will be displayed prominently in the UI bubble cursor
 
 Example thinking format:
 {"current_update": "Clicking on the Projects link in the sidebar"}
@@ -309,111 +301,38 @@ async def frontend_endpoint(websocket: WebSocket):
             "session_id": session_id
         })
         
-        # Add accessibility instructions (TEMPORARILY DISABLED)
-        logger.info("[ACCESSIBILITY DEBUG] Accessibility evaluation DISABLED")
+        # Accessibility evaluation instructions
         accessibility_instructions = """
 
-ACCESSIBILITY EVALUATION (DISABLED):
-Accessibility checks are currently disabled. Do not evaluate accessibility or provide accessibility suggestions.
-"""
-        
-        # COMMENTED OUT - RE-ENABLE LATER
-        # accessibility_instructions = """
-        #
-        # ACCESSIBILITY EVALUATION (ENABLED):
-        # While executing the workflow, check ONLY for low contrast buttons:
-        #
-        # FOCUS: Check if any BUTTONS have low contrast between background and text.
-        # - CRITICAL: If you see ANY buttons with yellow, light yellow, light blue, light green, or other light colored backgrounds with white text, you MUST flag this as a low contrast issue
-        # - Yellow buttons with white text are ALWAYS a contrast problem
-        # - Light colored buttons with white text are ALWAYS a contrast problem
-        # - Only check BUTTONS - ignore other UI elements
-        #
-        # CRITICAL: You MUST include accessibility_suggestions in your final verdict:
-        # - If you find low contrast buttons: accessibility_suggestions: ['Make the [button name] button text darker for better contrast against [color] background']
-        # - If you find NO low contrast buttons: accessibility_suggestions: ['No accessibility improvement recommendations!']
-        #
-        # IMPORTANT: Write suggestions in PLAIN TEXT without any markdown symbols, special characters, or formatting.
-        # - Do NOT use: *, `, +, -, >, #, or any other markdown symbols
-        # - Do NOT use emojis or special Unicode characters
-        # - Write simple, clear sentences
-        #
-        # Example formats:
-        # TEST PASSED. accessibility_suggestions: ['Make the Create button text darker for better contrast against yellow background']
-        # TEST PASSED. accessibility_suggestions: ['No accessibility improvement recommendations!']
-        # """
+ACCESSIBILITY EVALUATION:
+While executing the workflow, also evaluate the accessibility of the UI elements you interact with.
 
-INCORRECT ASSOCIATION BUG DETECTION:
-While executing the workflow, also check for incorrect associations between images and their context:
+Check for common accessibility issues:
+- Color contrast: Text should have sufficient contrast against its background (WCAG AA: 4.5:1 for normal text, 3:1 for large text)
+- Interactive elements: Buttons, links, and form controls should be clearly identifiable and have visible focus states
+- Text readability: Font sizes should be readable (minimum 14-16px for body text)
+- Touch targets: Interactive elements should be large enough to tap easily (minimum 44x44px)
+- Visual hierarchy: Important elements should stand out through size, color, or position
+- Form labels: Input fields should have clear, visible labels
+- Error messages: Validation errors should be clearly visible and descriptive
 
-FOCUS: Check if images/pictures are correctly associated with their surrounding text and context.
-- CRITICAL: If you see an image with text nearby that does NOT refer to that image but refers to something else, flag this as an incorrect association bug
-- Check if image captions, labels, or descriptions match the actual image content
-- Look for mismatched context where an image appears in a section but the text describes a different image or concept
-- Verify that images are placed in the correct location relative to their references
+CRITICAL ACCESSIBILITY REPORTING FORMAT:
+At the end of your test, include an accessibility_suggestions field in your thinking:
 
-EXAMPLES OF INCORRECT ASSOCIATION BUGS:
-- A product image with a caption describing a different product
-- An image in a section about Feature A but the image shows Feature B
-- Text saying "see image above" but the image is below or missing
-- Multiple images where labels or references are swapped
+accessibility_suggestions: ["suggestion 1", "suggestion 2", "suggestion 3"]
 
-If you detect an incorrect association bug, include it in your bug report with details about what is mismatched
+EXAMPLES:
+- accessibility_suggestions: ["Increase button text contrast", "Add visible focus states to links", "Increase font size for better readability"]
+- accessibility_suggestions: ["Improve color contrast on navigation menu", "Make error messages more visible"]
 
-E-COMMERCE UI BUG DETECTION:
-If the workflow involves e-commerce functionality, check for these common bugs:
+The accessibility_suggestions MUST be:
+- A JSON array of strings
+- Each suggestion should be 3-8 words
+- Specific to actual accessibility issues found
+- Focused on WHAT needs improvement, not HOW to fix it
+- Include 2-5 suggestions if issues are found, or empty array if none
 
-CART QUANTITY VALIDATION (CRITICAL):
-- When adding a product to cart, verify the cart quantity matches the quantity that was added
-- Example: If user adds 3 items, the cart should show 3 items, not 1 or a different number
-- Check if adding the same product multiple times correctly increments the quantity
-- Verify that the cart total reflects the correct number of items
-
-OTHER COMMON E-COMMERCE BUGS TO CHECK:
-- Price mismatch: Product price on listing page differs from cart or checkout price
-- Out of stock items: Items marked as "out of stock" can still be added to cart
-- Quantity limits: User can add more items than available stock or maximum allowed quantity
-- Cart persistence: Items disappear from cart after page refresh or navigation
-- Duplicate items: Same product appears multiple times in cart instead of incrementing quantity
-- Total calculation: Cart subtotal or total does not match sum of individual item prices
-- Discount application: Promo codes or discounts not applied correctly to cart total
-- Remove from cart: Clicking remove does not actually remove the item from cart
-- Update quantity: Changing quantity in cart does not update the price correctly
-
-If you detect any e-commerce bugs, include specific details:
-- What was expected (e.g., "Expected cart to show 3 items")
-- What actually happened (e.g., "Cart shows 1 item")
-- Which product or action triggered the bug
-
-ICON FUNCTIONALITY BUG DETECTION:
-Check for icons that appear functional but don't actually work properly:
-
-NON-FUNCTIONAL ICON BUGS (CRITICAL):
-- Favorites/Like button: Click the icon but item is NOT added to favorites on the first try
-- Bookmark button: Click the icon but item is NOT bookmarked on the first try
-- Heart/Save icons: Click the icon but no visual feedback or action occurs
-- Share icons: Click the icon but share dialog doesn't appear
-- Filter/Sort icons: Click the icon but filtering/sorting doesn't apply
-- Toggle icons: Click the icon but state doesn't change (e.g., visibility toggle, theme toggle)
-
-WHAT TO CHECK:
-- Click the icon once and verify the expected action happens immediately
-- Check for visual feedback (icon state change, color change, animation)
-- Verify the action persists (e.g., item stays in favorites after page refresh)
-- Test if multiple clicks are needed when only one should be required
-
-EXAMPLES OF ICON BUGS:
-- Click favorite icon but product doesn't appear in favorites list
-- Click bookmark icon but page doesn't get bookmarked
-- Click heart icon twice before it actually saves the item
-- Click filter icon but products don't filter
-- Click toggle icon but setting doesn't change
-
-If you detect an icon functionality bug, report it with:
-- Which icon was clicked (e.g., "Favorites icon", "Bookmark button")
-- What was expected (e.g., "Expected item to be added to favorites")
-- What actually happened (e.g., "Item was not added to favorites on first click")
-- How many clicks were needed for it to work (if applicable)
+Include this field in your final thinking whether the test passes or fails.
 """.strip()
         
         qa_prompt = f"""
@@ -426,26 +345,6 @@ Expected workflow to test:
 Run the workflow now. End with either:
 - TEST PASSED
 - TEST FAILED - BUG DETECTED
-
-CRITICAL BUG REPORTING FORMAT:
-If you detect a bug and report TEST FAILED - BUG DETECTED, you MUST include a bug_explanation field in your response:
-
-bug_explanation: "Short statement of what the bug is"
-
-EXAMPLES:
-- bug_explanation: "Incorrect product quantity in cart"
-- bug_explanation: "Button color has low contrast"
-- bug_explanation: "Image caption does not match product"
-- bug_explanation: "Cart total calculation is wrong"
-- bug_explanation: "Remove button does not work"
-
-The bug_explanation MUST be:
-- A short, clear statement (5-10 words)
-- Specific to the actual bug found
-- Written in plain text without markdown
-- Focused on WHAT is wrong, not HOW to fix it
-
-DO NOT use generic statements like "A bug was detected" - be specific about what the bug is.
 """.strip()
 
         # Initialize conversation history
@@ -479,6 +378,26 @@ DO NOT use generic statements like "A bug was detected" - be specific about what
                 session_id=session_id,
                 turn_number=turn_number,
             )
+            
+            # Check if response has candidates (can be None if blocked by safety filters)
+            if not response.candidates or len(response.candidates) == 0:
+                logger.error("turn no_candidates session_id=%s turn=%s", session_id, turn_number)
+                error_message = "Benji is taking a while to process this, please try again"
+                await websocket.send_json({
+                    "type": "error",
+                    "content": error_message
+                })
+                
+                # Send benji_thinking message to display error in bubble cursor
+                await websocket.send_json({
+                    "type": "benji_thinking",
+                    "content": error_message,
+                })
+                
+                session_meta[session_id]["status"] = "failed"
+                session_meta[session_id]["bug_detected"] = False
+                session_meta[session_id]["error"] = error_message
+                break
             
             # Append model response to conversation history
             candidate = response.candidates[0]
@@ -516,7 +435,11 @@ DO NOT use generic statements like "A bug was detected" - be specific about what
                 
                 if not current_update:
                     # Fallback to first sentence if no JSON found
-                    current_update = thinking_content.split('.')[0][:100] if thinking_content else "Processing..."
+                    if thinking_content and len(thinking_content.strip()) > 0:
+                        sentences = thinking_content.split('.')
+                        current_update = sentences[0][:100] if sentences and sentences[0] else "Processing..."
+                    else:
+                        current_update = "Processing..."
                 
                 # Remove ALL JSON-like patterns from thinking content for display
                 thinking_content_display = re.sub(r'\{["\']?current_update["\']?\s*:\s*["\'][^"\']+["\']\}\s*', '', thinking_content, flags=re.IGNORECASE)
@@ -533,12 +456,10 @@ DO NOT use generic statements like "A bug was detected" - be specific about what
                     "content": thinking_content_display
                 })
                 
-                # Send current_update to benji_thinking bubble with audio
-                audio_data = await _generate_speech(current_update)
+                # Send current_update to benji_thinking bubble
                 await websocket.send_json({
                     "type": "benji_thinking",
                     "content": current_update,
-                    "audio": audio_data,
                 })
                 
                 # Log thinking
@@ -578,13 +499,11 @@ DO NOT use generic statements like "A bug was detected" - be specific about what
                         "content": "Agent reported final test verdict"
                     })
                     
-                    # Send benji_thinking message for final verdict with audio
+                    # Send benji_thinking message for final verdict
                     if current_update:
-                        audio_data = await _generate_speech(current_update)
                         await websocket.send_json({
                             "type": "benji_thinking",
                             "content": current_update,
-                            "audio": audio_data,
                         })
                     
                     break
@@ -600,9 +519,14 @@ DO NOT use generic statements like "A bug was detected" - be specific about what
                         parts=[
                             genai.types.Part.from_text(
                                 text=(
-                                    "Continue executing the workflow. Do not stop until you can provide one of "
-                                    "these exact final verdicts based on observed behavior: "
-                                    "'TEST PASSED' or 'TEST FAILED - BUG DETECTED'."
+                                    "CRITICAL: You MUST provide a final verdict now. Based on what you have observed:\n\n"
+                                    "1. If the workflow completed successfully and all expected outcomes were achieved, respond with:\n"
+                                    '   {"current_update": "TEST PASSED"}\n'
+                                    "   TEST PASSED\n\n"
+                                    "2. If the workflow failed or a bug was detected, respond with:\n"
+                                    '   {"current_update": "TEST FAILED - [specific bug description]"}\n'
+                                    "   TEST FAILED - BUG DETECTED\n\n"
+                                    "You MUST include one of these verdicts in your response. Do not continue without providing a verdict."
                                 )
                             )
                         ],
@@ -655,11 +579,9 @@ DO NOT use generic statements like "A bug was detected" - be specific about what
                     }
                     benji_message = action_defaults.get(function_call.name, f"Executing {function_call.name}")
                 
-                audio_data = await _generate_speech(benji_message)
                 await websocket.send_json({
                     "type": "benji_thinking",
                     "content": benji_message,
-                    "audio": audio_data,
                 })
                 
                 # Send to Playwright client for execution
@@ -792,9 +714,9 @@ DO NOT use generic statements like "A bug was detected" - be specific about what
             logger.warning("[ACCESSIBILITY DEBUG] No accessibility suggestions found in any thinking logs")
         
         final_message = (
-            "TEST PASSED"
+            "✅ TEST PASSED"
             if final_status == "passed"
-            else f"TEST FAILED - BUG DETECTED. Reason: {failure_reason}"
+            else f"✅ TEST FAILED - BUG DETECTED. Reason: {failure_reason}"
         )
         
         # Add accessibility suggestions to final message if any were found
@@ -846,16 +768,14 @@ DO NOT use generic statements like "A bug was detected" - be specific about what
         # Fallback to friendly default if no current_update found
         if not verdict_current_update:
             if final_status == "passed":
-                verdict_current_update = "Great! The test passed successfully"
+                verdict_current_update = "✅ TEST PASSED"
             else:
-                verdict_current_update = f"Test failed - {failure_reason[:50]}" if failure_reason else "Test failed - bug detected"
+                verdict_current_update = f"❌ Test Failed: {failure_reason[:50]}" if failure_reason else "❌ Test Failed: bug detected"
         
-        # Send final verdict as benji_thinking with audio
-        audio_data = await _generate_speech(verdict_current_update)
+        # Send final verdict as benji_thinking
         await websocket.send_json({
             "type": "benji_thinking",
             "content": verdict_current_update,
-            "audio": audio_data,
         })
         
     except WebSocketDisconnect:
@@ -866,7 +786,7 @@ DO NOT use generic statements like "A bug was detected" - be specific about what
     except Exception as e:
         keepalive_running.clear()
         logger.exception("agent_loop_error client_id=%s session_id=%s", client_id, session_id)
-        error_message = str(e)
+        error_message = "Benji is taking a while to process this, please try again"
         if _is_quota_or_rate_limit_error(e):
             error_message = _friendly_quota_message()
         if "session_id" in locals() and session_id in session_meta:
