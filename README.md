@@ -1,3 +1,5 @@
+![Benji Header](https://github.com/Harpita-P/Benji-Browser-Agent/blob/e9d32a28a11996559bcc005f32df0afb5216bc80/Benji-Devpost-Thumbnail%20(1).png)
+
 #### Built for the Gemini Live Agents Challenge 2026, UI Navigator Category.
 
 The hardest part of building great web apps is that the experience can break in ways that are easy to miss until a real user runs into them. That's why we built Benji, an agentic browser agent that uses natural language to navigate your app like a real user. Benji uses multimodal vision and reasoning to click, type, and navigate to uncover meaningful bugs and help you ship reliable apps with more confidence.
