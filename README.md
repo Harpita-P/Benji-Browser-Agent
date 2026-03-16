@@ -1,6 +1,6 @@
-# Benji - AI QA Testing Agent
+# Benji - Your AI Teammate for Real User Experience
 
-Benji is an autonomous AI agent that executes comprehensive visual UI testing workflows on web applications. Built on Google's Gemini 2.5 Computer Use model, Benji performs end-to-end testing by navigating applications, interacting with UI elements, validating expected behaviors, and providing detailed accessibility evaluations—all through natural language test specifications.
+The hardest part of building great web apps is that the experience can break in ways that are easy to miss until a real user runs into them. That's why we built Benji, an agentic browser agent that uses natural language to navigate your app like a real user. Benji uses multimodal vision and reasoning to click, type, and navigate to uncover meaningful bugs and help you ship reliable apps with more confidence.
 
 ## ➡️ Set Up Benji in 3 Steps
 
@@ -29,27 +29,7 @@ GITHUB_TOKEN="your_github_token" \
 ./deploy.sh
 ```
 
-**What the script does:**
-1. Enables required GCP APIs (Cloud Run, Artifact Registry, Cloud Build)
-2. Creates a Docker repository in Artifact Registry if it doesn't exist
-3. Builds a Docker image from the `Dockerfile` using Cloud Build
-4. Deploys the image to Cloud Run with optimized configuration:
-   - 1 vCPU, 1GB memory
-   - 3600s timeout (1 hour for long-running tests)
-   - Auto-scaling up to 10 instances
-   - Unauthenticated access for WebSocket connections
-5. Configures environment variables (API keys, model IDs, GitHub MCP settings)
-
-**Optional configuration:** You can customize the deployment by setting additional environment variables:
-
-```bash
-REGION="us-central1" \                    # Cloud Run region
-SERVICE_NAME="benji-backend" \            # Custom service name
-COMPUTER_USE_MODEL_ID="gemini-2.5-..." \  # Gemini model version
-./deploy.sh
-```
-
-After successful deployment, the script outputs your Cloud Run service URL:
+After deployment, you'll get your Cloud Run service URL:
 ```
 ✅ Deployment complete!
 🌐 Cloud Run URL: https://benji-backend-xxxxx-uc.a.run.app
@@ -177,15 +157,7 @@ The Playwright client is the execution layer that bridges the cloud-based CUA wi
 
 The client maintains a persistent WebSocket connection to the Cloud Run backend, receives action commands (e.g., `click_at(x, y)`, `type_text_at(text)`), executes them via Playwright's browser automation APIs, and streams screenshots back to the backend in real-time.
 
-**Architecture Benefits:**
-
-By separating the AI reasoning (cloud) from browser execution (local), we achieved:
-- **Scalability:** The backend scales horizontally on Cloud Run for concurrent test sessions
-- **Flexibility:** Test any application—public, localhost, or behind VPNs
-- **Cost Efficiency:** Serverless pricing for the AI layer, local compute for browser automation
-- **Resilience:** Vision-based testing that adapts to UI changes without brittle selectors
-
-## � Project Structure
+## 📁 Project Structure
 
 ```
 Web-Dojo/
@@ -214,46 +186,3 @@ Web-Dojo/
 │
 └── README.md             # You are here!
 ```
-
-## 🔧 Configuration & Environment Variables
-
-### Cloud Run Backend Configuration
-
-The backend is configured entirely through the `deploy.sh` script via environment variables. All configuration is injected at deployment time and persisted in the Cloud Run service:
-
-**Required Variables:**
-- `PROJECT_ID` - Your Google Cloud project identifier
-- `GOOGLE_API_KEY` - Gemini API key for model access
-- `GITHUB_TOKEN` - GitHub personal access token for MCP agent (repo scope required)
-
-**Optional Variables:**
-- `REGION` - Cloud Run deployment region (default: `us-central1`)
-- `SERVICE_NAME` - Cloud Run service name (default: `benji-multiagent-backend`)
-- `COMPUTER_USE_MODEL_ID` - Gemini model version (default: `gemini-2.5-computer-use-preview-10-2025`)
-- `GITHUB_ADK_MCP_MODEL_NAME` - Model for GitHub agent (default: `gemini-2.5-pro`)
-- `MODEL_RETRY_MAX_ATTEMPTS` - API retry attempts (default: `4`)
-- `MODEL_RETRY_BASE_DELAY_SECONDS` - Exponential backoff base delay (default: `1.5`)
-- `LOG_LEVEL` - Backend logging verbosity (default: `INFO`)
-
-### Playwright Client Configuration
-
-The Playwright client requires a single configuration change to connect to your deployed Cloud Run backend:
-
-```python
-# Edit playwright_client.py, line ~10
-BACKEND_WS_URL = "wss://your-cloud-run-url.run.app/playwright"
-```
-
-Replace `your-cloud-run-url.run.app` with the actual Cloud Run URL from your deployment output. The protocol must be `wss://` (WebSocket Secure) for Cloud Run connections.
-
-### Frontend Configuration
-
-Configure the Next.js frontend to communicate with your Cloud Run backend:
-
-```bash
-# Create .env.local in the frontend/ directory
-NEXT_PUBLIC_BACKEND_HTTP_URL=https://your-cloud-run-url.run.app
-NEXT_PUBLIC_BACKEND_WS_URL=wss://your-cloud-run-url.run.app
-```
-
-These environment variables are consumed by the Next.js build process and embedded into the client-side bundle for WebSocket connection establishment.
