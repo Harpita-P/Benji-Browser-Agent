@@ -98,7 +98,7 @@ Open `http://localhost:3000` in your browser and you're ready to go! 🎉
 
 ## 🏗️ Architecture Overview
 
-![Benji Hybrid System Architecture](docs/architecture-diagram.png)
+![Benji Hybrid System Architecture](https://github.com/Harpita-P/Benji-Browser-Agent/blob/f390fc875ab69faa230e45bfd92f66859331d2f8/Benji-Architecture-Diagram.png)
 
 We built Benji as a **hybrid multi-agent system** that combines cloud-hosted AI reasoning with local browser execution. The architecture centers around two specialized agents working in concert: a **Computer Use Agent (CUA)** for visual UI testing and an **Autonomous Code Fix Agent** for automated bug remediation.
 
