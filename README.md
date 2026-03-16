@@ -124,7 +124,7 @@ This cycle repeats continuously until the test workflow is complete or a bug is 
 
 **Why This Matters:** Traditional UI testing tools depend on CSS selectors, XPath, or accessibility IDs that break when the UI changes. Our vision-action feedback loop is resilient to UI refactors because the model adapts to visual changes just like a human tester would. If a button moves or changes color, the model still recognizes it visually and adjusts its actions accordingly.
 
-The CUA runs on **Google Cloud Run** as a FastAPI WebSocket server, leveraging the Gemini 2.5 Computer Use model via the GenAI SDK. We chose Cloud Run for its serverless scalability—multiple test sessions can run concurrently without provisioning infrastructure, and you only pay for active test execution time.
+The CUA runs on **Google Cloud Run** as a FastAPI WebSocket server, leveraging the Gemini 2.5 Computer Use model via the GenAI SDK.
 
 ### Agent 2: Autonomous Code Fix Agent (GitHub MCP)
 
@@ -150,11 +150,6 @@ This entire pipeline runs autonomously without human intervention. We integrated
 
 ### Playwright Local Client
 
-The Playwright client is the execution layer that bridges the cloud-based CUA with the actual browser. We run this locally (not in Cloud Run) for several critical reasons:
+The Playwright client is the execution layer that bridges the cloud-based CUA with the actual browser. We run this locally (not in Cloud Run) because it needs direct system access to control a real Chromium instance and test applications on `localhost` or internal networks.
 
-- **Direct Browser Control:** Playwright needs system-level access to launch and control Chromium, which requires native OS integration
-- **Localhost Testing:** Running locally allows you to test applications on `localhost` or internal networks that aren't publicly accessible
-- **Performance:** Local execution eliminates network latency for browser commands and screenshot capture
-- **Resource Efficiency:** Headless browsers are resource-intensive and don't fit the serverless model well
-
-The client maintains a persistent WebSocket connection to the Cloud Run backend, receives action commands (e.g., `click_at(x, y)`, `type_text_at(text)`), executes them via Playwright's browser automation APIs, and streams screenshots back to the backend in real-time.
+We wrote custom Playwright functions that translate the CUA's coordinate-based commands into browser actions. When the backend sends `click_at(x=450, y=320)`, the Playwright client converts these pixel coordinates into a browser click event at that exact screen position. Similarly, `type_text_at(text="user@example.com", x=300, y=200)` first clicks at the coordinates to focus the input field, then types the text. After each action executes, the client captures a full-page screenshot and streams it back to the backend, completing the feedback loop. This coordinate-based approach allows the vision model to interact with any UI element without needing CSS selectors or DOM queries.
