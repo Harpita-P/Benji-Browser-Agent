@@ -13,6 +13,8 @@ Before you begin, make sure you have:
 
 ### Step 1: Deploy Your Backend to the Cloud
 
+We host both agents—the Computer Use Agent (CUA) and the GitHub MCP Agent—on Google Cloud Run for serverless orchestration. This means the AI reasoning layer scales automatically based on demand, you only pay for active test execution time, and the backend handles multiple concurrent test sessions without any infrastructure management on your part.
+
 Benji includes an automated deployment script that handles the entire Cloud Run setup, including Docker image building, Artifact Registry configuration, and service deployment.
 
 ```bash
@@ -63,7 +65,7 @@ Waiting for browser automation commands...
 
 **Keep this terminal running** - the Playwright client must remain active to execute browser commands from the backend.
 
-### Step 3: Launch the Frontend
+### Step 3: Launch the Frontend Workspace
 
 Fire up the web interface where you'll control Benji.
 
@@ -156,33 +158,3 @@ The Playwright client is the execution layer that bridges the cloud-based CUA wi
 - **Resource Efficiency:** Headless browsers are resource-intensive and don't fit the serverless model well
 
 The client maintains a persistent WebSocket connection to the Cloud Run backend, receives action commands (e.g., `click_at(x, y)`, `type_text_at(text)`), executes them via Playwright's browser automation APIs, and streams screenshots back to the backend in real-time.
-
-## 📁 Project Structure
-
-```
-Web-Dojo/
-├── cloud_backend/           # Agent Backend (FastAPI)
-│   ├── main.py             # Main WebSocket server & Gemini integration
-│   ├── github_agent.py     # GitHub MCP agent for bug analysis & fixes
-│   ├── requirements.txt    # Python dependencies
-│   ├── Dockerfile          # For Cloud Run deployment
-│   └── .env               # Environment variables (create this)
-│
-├── frontend/               # Next.js UI
-│   ├── app/
-│   │   ├── page.tsx       # Main testing workspace UI
-│   │   ├── layout.tsx     # Root layout
-│   │   └── globals.css    # Tailwind styles
-│   ├── package.json       # Node.js dependencies
-│   └── .env.local         # Frontend environment variables (create this)
-│
-├── playwright_client.py    # Playwright Local Client (browser controller)
-├── browser_agent.py       # Legacy standalone agent (deprecated)
-│
-├── docs/                  # Additional documentation
-│   ├── RUN_REPO_QUICKSTART.md
-│   ├── README_CLOUD_ARCHITECTURE.md
-│   └── GITHUB_AGENT_WORKFLOW.md
-│
-└── README.md             # You are here!
-```
